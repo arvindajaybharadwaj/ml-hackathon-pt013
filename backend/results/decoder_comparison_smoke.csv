@@ -1,0 +1,5 @@
+trip_id,decoder,sequence_similarity,arc_set_f1,route_continuity,inference_time_ms
+52.0,classifier_only,0.5,0.720812,0.773946,263.96000000000004
+52.0,classifier_plus_hmm,0.873684,0.932584,0.965517,942.619
+56.0,classifier_only,0.465387,0.734479,0.763457,5829.826999999999
+56.0,classifier_plus_hmm,0.801487,0.929658,0.964114,16708.249

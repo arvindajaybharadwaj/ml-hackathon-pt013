@@ -210,3 +210,47 @@ curl -X POST http://127.0.0.1:8000/api/predict/00000052
 - Confirm whether reference labels are available server-side in that partition. Never expose the `.route` file or labels through trip metadata, prediction inputs, or frontend responses.
 - Re-run unit, integration and end-to-end tests using the actual teammate artifacts.
 - Keep actual run logs and metrics; do not report fallback results as final model results.
+
+## 10. HMM experiments and decoder comparison
+
+The updated package includes three experiment scripts:
+
+```bash
+# Evaluate every trip in the student_test partition and save per-trip metrics.
+python scripts/evaluate_all_trips.py --data-root "/path/to/Student folder" --partition student_test
+
+# Build a classifier-only vs classifier + HMM comparison from that CSV.
+python scripts/compare_decoders.py
+
+# Run a small smoke grid on one trip first.
+python scripts/tune_hmm.py --data-root "/path/to/Student folder" --partition student_test --quick --trip-limit 1
+
+# Run the full proposed grid after Person 1/2 integrations are ready.
+python scripts/tune_hmm.py --data-root "/path/to/Student folder" --partition student_test
+```
+
+Outputs are written to `results/`. The evaluation script runs each trip in a
+separate short-lived process to limit memory accumulation from large road graphs.
+The full tuning grid can take substantially longer than a smoke test.
+
+The comparison includes sequence edit similarity, arc-set F1, direct route
+continuity and measured inference time. Classifier-only inference time excludes
+HMM decoding; classifier + HMM time includes the full pipeline. See
+`docs/HMM_DESIGN.md` for metric definitions and transition assumptions.
+
+## 11. Production safeguards and diagnostics
+
+Set `PATHSNAP_ENV=production` only after both teammate artifacts are available.
+Production startup refuses to use the distance fallback and checks for a
+prepared-candidate file for each trip. Development mode reports
+`status=degraded` and `prediction_mode=development_fallback` in `/health`.
+
+Prediction responses now include:
+
+- Candidate row count and matched/missing observation counts.
+- Decoder diagnostics: per-observation candidate counts, missing states,
+  unreachable transitions and long GPS gaps.
+- Timing breakdown: candidate generation, model scoring, HMM decoding and total.
+- Candidate provider and predictor mode.
+
+See `docs/BACKEND_ARCHITECTURE.md` and `docs/DEPLOYMENT_GUIDE.md`.

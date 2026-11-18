@@ -31,6 +31,7 @@ class Settings:
     missing_state_penalty: float
     unreachable_penalty: float
     cors_origins: tuple[str, ...]
+    environment: str = "development"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -59,4 +60,5 @@ class Settings:
             missing_state_penalty=float(os.getenv("PATHSNAP_MISSING_STATE_PENALTY", "6")),
             unreachable_penalty=float(os.getenv("PATHSNAP_UNREACHABLE_PENALTY", "12")),
             cors_origins=tuple(x.strip() for x in origins_raw.split(",") if x.strip()),
+            environment=os.getenv("PATHSNAP_ENV", "development").strip().lower(),
         )

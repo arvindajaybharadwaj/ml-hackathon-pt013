@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from time import perf_counter
 
-import pandas as pd
-
 from .candidates import CandidateProvider
 from .data import ReferenceRouteRepository, TripRepository
-from .hmm import HMMConfig, HMMViterbiDecoder
+from .hmm import HMMViterbiDecoder, _observation_step
 from .network import RoadNetwork
 from .predictor import CandidatePredictor
 
@@ -23,20 +21,31 @@ class PredictionService:
         started = perf_counter()
         trip = self.trips.load_trip(trip_id)
         network = RoadNetwork(trip)
+
+        stage = perf_counter()
         candidates = self.candidate_provider.generate(trip, network)
+        candidate_generation_ms = (perf_counter() - stage) * 1000.0
+
+        stage = perf_counter()
         scores = self.predictor.score_candidates(candidates)
         candidates = candidates.copy()
         candidates["model_score"] = scores
+        model_scoring_ms = (perf_counter() - stage) * 1000.0
+
+        stage = perf_counter()
         decoded = self.decoder.decode(trip.track, candidates, network)
+        hmm_decoding_ms = (perf_counter() - stage) * 1000.0
+
+        grouped_candidates = {int(k): v for k, v in candidates.groupby("obs_index", sort=False)} if not candidates.empty else {}
         classifier_only = []
         for obs_index in range(len(trip.track)):
-            group = candidates[candidates.obs_index == obs_index]
-            if group.empty:
+            group = grouped_candidates.get(obs_index)
+            if group is None or group.empty:
                 classifier_only.append(None)
             else:
                 classifier_only.append(int(group.loc[group.model_score.idxmax(), "arc_id"]))
-        route_continuity = _route_continuity(decoded.arc_ids, network)
-        classifier_continuity = _route_continuity(classifier_only, network)
+        route_continuity = _route_continuity(decoded.arc_ids, network, trip.track, self.decoder)
+        classifier_continuity = _route_continuity(classifier_only, network, trip.track, self.decoder)
 
         route_coordinates: list[list[float]] = []
         for arc_id in decoded.arc_ids:
@@ -52,13 +61,14 @@ class PredictionService:
 
         matches = []
         for obs_index, arc_id in enumerate(decoded.arc_ids):
-            selected = candidates[(candidates.obs_index == obs_index) & (candidates.arc_id == arc_id)] if arc_id is not None else candidates.iloc[0:0]
+            group = grouped_candidates.get(obs_index)
+            selected = group[group.arc_id == arc_id] if arc_id is not None and group is not None else candidates.iloc[0:0]
             row = selected.iloc[0] if not selected.empty else None
             matches.append({
                 "obs_index": obs_index,
                 "arc_id": int(arc_id) if arc_id is not None else None,
                 "candidate_score": float(decoded.candidate_scores[obs_index]),
-                "distance_m": float(row.distance_m) if row is not None else None,
+                "distance_m": float(row.distance_m) if row is not None and "distance_m" in row else None,
             })
         elapsed = (perf_counter() - started) * 1000.0
         return {
@@ -66,7 +76,9 @@ class PredictionService:
             "partition": trip.partition,
             "prediction_mode": self.predictor.mode,
             "predictor": self.predictor.name,
+            "candidate_provider": type(self.candidate_provider).__name__,
             "gps_observations": int(len(trip.track)),
+            "candidate_rows": int(len(candidates)),
             "matched_observations": int(sum(x is not None for x in decoded.arc_ids)),
             "missing_observations": int(decoded.missing_observations),
             "predicted_arc_ids": decoded.arc_ids,
@@ -76,6 +88,13 @@ class PredictionService:
             "route_coordinates": route_coordinates,
             "matches": matches,
             "viterbi_log_probability": decoded.log_probability,
+            "decoder_diagnostics": decoded.diagnostics,
+            "timing_breakdown_ms": {
+                "candidate_generation": round(candidate_generation_ms, 3),
+                "model_scoring": round(model_scoring_ms, 3),
+                "hmm_decoding": round(hmm_decoding_ms, 3),
+                "total": round(elapsed, 3),
+            },
             "processing_time_ms": round(elapsed, 2),
             "coordinate_order": "[longitude, latitude]",
         }
@@ -90,6 +109,7 @@ class EvaluationService:
 
     def evaluate(self, trip_id: str) -> dict:
         prediction = self.prediction_service.predict(trip_id)
+        # Ground truth is deliberately loaded only after prediction has completed.
         reference = self.references.load_reference_route(trip_id)
         predicted = _compress_consecutive([x for x in prediction["predicted_arc_ids"] if x is not None])
         reference_compact = _compress_consecutive(reference)
@@ -124,6 +144,8 @@ class EvaluationService:
             "arc_set_precision": round(precision, 6),
             "arc_set_recall": round(recall, 6),
             "arc_set_f1": round(f1, 6),
+            "timing_breakdown_ms": prediction["timing_breakdown_ms"],
+            "decoder_diagnostics": prediction["decoder_diagnostics"],
             "note": (
                 "The .route file is a trip-level arc sequence, not an observation-aligned label array. "
                 "Therefore these are sequence/set metrics, not GPS pointwise accuracy."
@@ -161,16 +183,19 @@ def _lcs_length(a: list[int], b: list[int]) -> int:
     return previous[-1]
 
 
-def _route_continuity(arc_ids: list[int | None], network) -> float:
-    """Share of consecutive matched predictions that are reachable in the directed graph."""
+def _route_continuity(arc_ids: list[int | None], network, observations, decoder) -> float:
+    """Fraction of consecutive matched arc predictions with direct directed continuity.
+
+    A pair is continuous when it remains on the same arc or the previous arc's
+    end node is the current arc's start node. This intentionally measures direct
+    adjacency (not arbitrary multi-hop reachability), so it is fast, deterministic
+    and has a precise interpretation for the report.
+    """
     pairs = [(a, b) for a, b in zip(arc_ids, arc_ids[1:]) if a is not None and b is not None]
     if not pairs:
         return 1.0
     connected = 0
     for previous, current in pairs:
-        # The bound is deliberately generous: this measures topological reachability,
-        # while the HMM transition score separately checks distance plausibility.
-        distance = network.route_distance(previous, 0.5, current, 0.5, 20_000.0)
-        if distance is not None:
+        if previous == current or int(network.arcs[int(previous), 1]) == int(network.arcs[int(current), 0]):
             connected += 1
     return connected / len(pairs)

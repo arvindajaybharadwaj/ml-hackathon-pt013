@@ -1,0 +1,9 @@
+transition_sigma_base_m,transition_sigma_fraction,missing_state_penalty,unreachable_penalty,max_speed_mps,gap_scale_after_s,mean_sequence_similarity,mean_arc_set_f1,mean_arc_set_precision,mean_arc_set_recall,trip_count,predictor_mode,predictor
+30.0,0.25,6.0,8.0,70.0,10.0,0.7041666666666666,0.9276139410187668,0.8917525773195877,0.9664804469273743,1,development_fallback,distance-only-development-fallback
+30.0,0.25,6.0,12.0,70.0,10.0,0.7041666666666666,0.9276139410187668,0.8917525773195877,0.9664804469273743,1,development_fallback,distance-only-development-fallback
+30.0,0.5,6.0,8.0,70.0,10.0,0.6954732510288066,0.9251336898395721,0.8871794871794871,0.9664804469273743,1,development_fallback,distance-only-development-fallback
+30.0,0.5,6.0,12.0,70.0,10.0,0.6954732510288066,0.9251336898395721,0.8871794871794871,0.9664804469273743,1,development_fallback,distance-only-development-fallback
+50.0,0.25,6.0,8.0,70.0,10.0,0.6829268292682926,0.9148936170212766,0.8730964467005076,0.9608938547486033,1,development_fallback,distance-only-development-fallback
+50.0,0.25,6.0,12.0,70.0,10.0,0.6829268292682926,0.9148936170212766,0.8730964467005076,0.9608938547486033,1,development_fallback,distance-only-development-fallback
+50.0,0.5,6.0,8.0,70.0,10.0,0.6829268292682926,0.9148936170212766,0.8730964467005076,0.9608938547486033,1,development_fallback,distance-only-development-fallback
+50.0,0.5,6.0,12.0,70.0,10.0,0.6829268292682926,0.9148936170212766,0.8730964467005076,0.9608938547486033,1,development_fallback,distance-only-development-fallback

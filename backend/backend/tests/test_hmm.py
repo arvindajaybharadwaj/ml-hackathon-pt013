@@ -48,3 +48,33 @@ def test_viterbi_handles_missing_candidate_observation():
     assert len(result.arc_ids) == 3
     assert result.arc_ids[1] is None
     assert result.missing_observations == 1
+
+
+def test_decoder_reports_missing_and_gap_diagnostics():
+    observations = pd.DataFrame({
+        "longitude": [0.0, 0.0001, 0.0002],
+        "latitude": [0.0, 0.0, 0.0],
+        "timestamp": [1.0, 2.0, 40.0],
+    })
+    candidates = pd.DataFrame([
+        {"obs_index": 0, "arc_id": 1, "fraction": 0.1, "model_score": 1.0},
+        {"obs_index": 2, "arc_id": 2, "fraction": 0.5, "model_score": 1.0},
+    ])
+    result = HMMViterbiDecoder(HMMConfig(gap_scale_after_s=10)).decode(
+        observations, candidates, TinyNetwork()
+    )
+    assert result.diagnostics["long_gaps"] == 1
+    assert result.diagnostics["candidate_counts"] == [1, 0, 1]
+    assert result.diagnostics["transition_count"] > 0
+
+
+def test_decoder_rejects_bad_candidate_observation_index():
+    observations = pd.DataFrame({
+        "longitude": [0.0], "latitude": [0.0], "timestamp": [1.0]
+    })
+    candidates = pd.DataFrame([
+        {"obs_index": 4, "arc_id": 1, "fraction": 0.2, "model_score": 1.0}
+    ])
+    import pytest
+    with pytest.raises(ValueError, match="obs_index"):
+        HMMViterbiDecoder().decode(observations, candidates, TinyNetwork())

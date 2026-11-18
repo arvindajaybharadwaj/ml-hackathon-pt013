@@ -26,7 +26,8 @@ def main():
     print("PREDICTION SUMMARY")
     print(json.dumps({k: result[k] for k in (
         "trip_id", "prediction_mode", "gps_observations", "matched_observations",
-        "route_continuity", "classifier_only_route_continuity", "processing_time_ms"
+        "route_continuity", "classifier_only_route_continuity", "timing_breakdown_ms",
+        "decoder_diagnostics", "processing_time_ms"
     )}, indent=2))
     try:
         print("EVALUATION SUMMARY")

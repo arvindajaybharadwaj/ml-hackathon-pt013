@@ -1,0 +1,16 @@
+{
+  "partition": "student_test",
+  "grid_size": 8,
+  "trip_count": 1,
+  "predictor_mode": "development_fallback",
+  "predictor": "distance-only-development-fallback",
+  "best_config_by_mean_sequence_similarity_then_f1": {
+    "transition_sigma_base_m": 30.0,
+    "transition_sigma_fraction": 0.25,
+    "missing_state_penalty": 6.0,
+    "unreachable_penalty": 8.0
+  },
+  "best_mean_sequence_similarity": 0.7041666666666666,
+  "best_mean_arc_set_f1": 0.9276139410187668,
+  "warning": "Exploratory tuning on this partition is not an independent final evaluation. Do not tune against evaluator-test labels."
+}

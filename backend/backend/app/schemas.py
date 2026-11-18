@@ -11,6 +11,9 @@ class HealthResponse(BaseModel):
     predictor_mode: str
     candidate_provider: str
     data_root_exists: bool
+    dataset_available: bool = False
+    hmm_enabled: bool = True
+    prediction_mode: str
 
 
 class TripSummary(BaseModel):
@@ -27,7 +30,9 @@ class PredictionResponse(BaseModel):
     partition: str
     prediction_mode: str
     predictor: str
+    candidate_provider: str
     gps_observations: int
+    candidate_rows: int
     matched_observations: int
     missing_observations: int
     predicted_arc_ids: list[int | None]
@@ -37,6 +42,8 @@ class PredictionResponse(BaseModel):
     route_coordinates: list[list[float]]
     matches: list[dict]
     viterbi_log_probability: float
+    decoder_diagnostics: dict
+    timing_breakdown_ms: dict[str, float]
     processing_time_ms: float
     coordinate_order: str = "[longitude, latitude]"
 
@@ -55,6 +62,8 @@ class EvaluationResponse(BaseModel):
     arc_set_precision: float
     arc_set_recall: float
     arc_set_f1: float
+    timing_breakdown_ms: dict[str, float]
+    decoder_diagnostics: dict
     note: str
 
 

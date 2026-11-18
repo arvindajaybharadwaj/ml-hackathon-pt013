@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+import heapq
+import itertools
 from dataclasses import dataclass
 
 import networkx as nx
@@ -38,7 +40,7 @@ class Projector:
 class RoadNetwork:
     """Directed road graph with metric edge lengths and cached bounded shortest paths."""
 
-    def __init__(self, trip: TripData, cache_size: int = 2048):
+    def __init__(self, trip: TripData, cache_size: int = 2048, max_search_nodes: int = 500):
         self.trip = trip
         self.projector = Projector.for_coordinates(
             np.concatenate([trip.nodes_lonlat[:, 0], trip.track.longitude.to_numpy()]),
@@ -59,8 +61,11 @@ class RoadNetwork:
         for arc_id, (u, v) in enumerate(self.arcs):
             length = float(self.arc_lengths[arc_id])
             self.graph.add_edge(int(u), int(v), key=int(arc_id), weight=max(length, 0.01), arc_id=int(arc_id))
-        self._cache_size = cache_size
-        self._distance_cache: OrderedDict[tuple[int, int], dict[int, float]] = OrderedDict()
+        self._cache_size = cache_size * 16
+        self.max_search_nodes = int(max_search_nodes)
+        # Cache exact source/target shortest-path results. A* with a straight-line
+        # admissible heuristic avoids exploring a large radius around every source.
+        self._distance_cache: OrderedDict[tuple[int, int], float | None] = OrderedDict()
 
     def edge_coordinates(self, arc_id: int) -> list[list[float]]:
         u, v = self.arcs[int(arc_id)]
@@ -99,22 +104,46 @@ class RoadNetwork:
         return (1.0 - prev_fraction) * prev_length + middle + curr_fraction * curr_length
 
     def shortest_distance(self, source: int, target: int, cutoff_m: float) -> float | None:
+        source, target = int(source), int(target)
         if source == target:
             return 0.0
-        cutoff_bucket = max(100, int(np.ceil(cutoff_m / 100.0) * 100))
-        key = (int(source), cutoff_bucket)
-        distances = self._distance_cache.get(key)
-        if distances is None:
-            try:
-                distances = nx.single_source_dijkstra_path_length(
-                    self.graph, int(source), cutoff=float(cutoff_bucket), weight="weight"
-                )
-            except (nx.NetworkXError, nx.NodeNotFound):
-                distances = {}
-            self._distance_cache[key] = distances
-            if len(self._distance_cache) > self._cache_size:
-                self._distance_cache.popitem(last=False)
-        else:
+        if source < 0 or target < 0 or source >= len(self.node_xy) or target >= len(self.node_xy):
+            return None
+        straight_line = float(np.linalg.norm(self.node_xy[source] - self.node_xy[target]))
+        if straight_line > cutoff_m:
+            return None
+        key = (source, target)
+        if key in self._distance_cache:
+            value = self._distance_cache[key]
             self._distance_cache.move_to_end(key)
-        value = distances.get(int(target))
-        return float(value) if value is not None else None
+            return value if value is not None and value <= cutoff_m else None
+        # Bounded A*: straight-line distance is admissible because each edge
+        # weight is its projected Euclidean length. The expansion cap prevents
+        # disconnected candidates from causing an unbounded graph search.
+        counter = itertools.count()
+        queue = [(straight_line, 0.0, next(counter), source)]
+        best = {source: 0.0}
+        expanded = 0
+        value = None
+        while queue and expanded < self.max_search_nodes:
+            _, distance, _, node = heapq.heappop(queue)
+            if distance != best.get(node):
+                continue
+            if node == target:
+                value = float(distance)
+                break
+            expanded += 1
+            for neighbour, edge_data in self.graph[node].items():
+                for attrs in edge_data.values():
+                    edge_weight = float(attrs.get("weight", 0.0))
+                    candidate_distance = distance + edge_weight
+                    if candidate_distance > cutoff_m or candidate_distance >= best.get(neighbour, float("inf")):
+                        continue
+                    best[neighbour] = candidate_distance
+                    heuristic = float(np.linalg.norm(self.node_xy[neighbour] - self.node_xy[target]))
+                    heapq.heappush(queue, (candidate_distance + heuristic, candidate_distance,
+                                           next(counter), int(neighbour)))
+        self._distance_cache[key] = value
+        if len(self._distance_cache) > self._cache_size:
+            self._distance_cache.popitem(last=False)
+        return value if value is not None and value <= cutoff_m else None

@@ -67,3 +67,32 @@ The response includes `predicted_arc_ids`, `classifier_only_arc_ids`, `route_coo
 `GET /api/evaluate/00000052`
 
 Returns sequence and arc-set metrics comparing the reconstructed route against the server-side reference `.route` sequence. It does not return reference labels.
+
+## Updated health response
+
+Development fallback mode is explicitly marked as degraded:
+
+```json
+{
+  "status": "degraded",
+  "partition": "student_test",
+  "model_loaded": false,
+  "predictor": "distance-only-development-fallback",
+  "predictor_mode": "development_fallback",
+  "candidate_provider": "NearestArcCandidateProvider",
+  "data_root_exists": true,
+  "dataset_available": true,
+  "hmm_enabled": true,
+  "prediction_mode": "development_fallback"
+}
+```
+
+The values above are an illustrative response. Your actual health response
+reflects the current configuration.
+
+## Prediction diagnostics
+
+Prediction responses include `decoder_diagnostics` and `timing_breakdown_ms`.
+The latter separates candidate generation, model scoring, HMM decoding and total
+processing time. All timings are measured at runtime; do not copy example
+numbers into the report.

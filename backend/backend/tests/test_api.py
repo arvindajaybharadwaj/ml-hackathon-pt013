@@ -32,7 +32,10 @@ def test_api_smoke(tmp_path):
     )
     app = create_app(settings)
     with TestClient(app) as client:
-        assert client.get("/health").status_code == 200
+        health = client.get("/health")
+        assert health.status_code == 200
+        assert health.json()["status"] == "degraded"
+        assert health.json()["prediction_mode"] == "development_fallback"
         assert client.get("/api/trips").json()["trip_ids"] == ["00000052"]
         assert client.get("/api/trips/00000052").status_code == 200
         prediction = client.post("/api/predict/00000052")
@@ -40,6 +43,9 @@ def test_api_smoke(tmp_path):
         body = prediction.json()
         assert len(body["predicted_arc_ids"]) == 3
         assert body["prediction_mode"] == "development_fallback"
+        assert body["candidate_rows"] > 0
+        assert body["timing_breakdown_ms"]["hmm_decoding"] >= 0
+        assert "unreachable_transitions" in body["decoder_diagnostics"]
         evaluation = client.get("/api/evaluate/00000052")
         assert evaluation.status_code == 200, evaluation.text
         assert "sequence_edit_similarity" in evaluation.json()

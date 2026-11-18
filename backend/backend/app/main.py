@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -13,18 +14,28 @@ from .predictor import DistanceFallbackPredictor, JoblibCandidatePredictor
 from .schemas import EvaluationResponse, HealthResponse, PredictionResponse, TripSummary
 from .services import EvaluationService, PredictionService
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("pathsnap.api")
+logger.setLevel(logging.INFO)
+
 
 def build_services(settings: Settings):
     trips = TripRepository(settings.data_root, settings.partition)
+    production = settings.environment == "production"
+    if production and not settings.candidate_dir:
+        raise RuntimeError("Production mode requires PATHSNAP_CANDIDATE_DIR from Person 1")
     if settings.candidate_dir:
+        if production and not settings.candidate_dir.is_dir():
+            raise RuntimeError(f"Prepared candidate directory does not exist: {settings.candidate_dir}")
         candidate_provider = PreparedCandidateProvider(settings.candidate_dir)
     else:
         candidate_provider = NearestArcCandidateProvider(
             radius_m=settings.candidate_radius_m, max_candidates=settings.max_candidates
         )
+
     if settings.model_mode == "distance_fallback":
-        if not settings.allow_dev_fallback:
-            raise RuntimeError("Distance fallback is development-only; configure Person 2's model")
+        if production or not settings.allow_dev_fallback:
+            raise RuntimeError("Distance fallback is development-only; configure Person 2's trained model")
         predictor = DistanceFallbackPredictor(settings.emission_sigma_m)
     else:
         if not settings.model_path:
@@ -33,6 +44,22 @@ def build_services(settings: Settings):
             settings.model_path, settings.model_features,
             mode=settings.model_mode, positive_class=settings.positive_class,
         )
+
+    if production:
+        if not settings.data_root.is_dir() or not trips.partition_dir.is_dir():
+            raise RuntimeError("Production data root or configured partition does not exist")
+        trip_ids = trips.list_trip_ids()
+        if not trip_ids:
+            raise RuntimeError("Production partition contains no valid trip folders")
+        missing_candidate_trips = [trip_id for trip_id in trip_ids
+            if not ((settings.candidate_dir / f"{trip_id}.csv").is_file()
+                    or (settings.candidate_dir / f"{trip_id}.parquet").is_file())]
+        if missing_candidate_trips:
+            raise RuntimeError(
+                "Prepared candidate files are missing for trips: "
+                + ", ".join(missing_candidate_trips[:10])
+            )
+
     decoder = HMMViterbiDecoder(HMMConfig(
         transition_sigma_base_m=settings.transition_sigma_base_m,
         transition_sigma_fraction=settings.transition_sigma_fraction,
@@ -57,12 +84,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.prediction = prediction
         app.state.evaluation = evaluation
         app.state.settings = settings
+        logger.info(
+            "PathSnap backend ready | env=%s partition=%s predictor=%s mode=%s candidates=%s trips=%d",
+            settings.environment, settings.partition, predictor.name, predictor.mode,
+            type(candidate_provider).__name__, len(trips.list_trip_ids()),
+        )
         yield
+        logger.info("PathSnap backend shutting down")
 
     application = FastAPI(
         title="PathSnap Prediction API",
         description="HMM/Viterbi route reconstruction backend for the Person 3 component.",
-        version="1.0.0",
+        version="1.1.0",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -73,6 +106,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    @application.middleware("http")
+    async def request_logging(request: Request, call_next):
+        response = await call_next(request)
+        client = request.client.host if request.client else "unknown"
+        logger.info("%s %s -> %s client=%s", request.method, request.url.path, response.status_code, client)
+        return response
+
     def state(request):
         if not hasattr(request.app.state, "prediction"):
             raise HTTPException(status_code=503, detail="Backend services are not initialised")
@@ -80,19 +120,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.get("/", tags=["system"])
     def root():
-        return {"name": "PathSnap Prediction API", "docs": "/docs", "health": "/health"}
+        return {"name": "PathSnap Prediction API", "version": "1.1.0", "docs": "/docs", "health": "/health"}
 
     @application.get("/health", response_model=HealthResponse, tags=["system"])
     def health(request: Request):
         s = state(request)
+        is_dev = s.predictor.mode == "development_fallback"
+        dataset_available = bool(s.trips.list_trip_ids())
         return HealthResponse(
-            status="ok",
+            status="degraded" if is_dev else ("healthy" if dataset_available else "unavailable"),
             partition=settings.partition,
-            model_loaded=s.predictor.mode != "development_fallback",
+            model_loaded=not is_dev,
             predictor=s.predictor.name,
             predictor_mode=s.predictor.mode,
             candidate_provider=type(s.candidate_provider).__name__,
             data_root_exists=settings.data_root.exists(),
+            dataset_available=dataset_available,
+            hmm_enabled=True,
+            prediction_mode="development_fallback" if is_dev else "trained_model",
         )
 
     @application.get("/api/trips", tags=["trips"])
@@ -105,7 +150,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         s = state(request)
         try:
             return s.trips.metadata(trip_id)
-        except (ValueError, FileNotFoundError) as exc:
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @application.post("/api/predict/{trip_id}", response_model=PredictionResponse, tags=["prediction"])
@@ -113,20 +160,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         s = state(request)
         try:
             return s.prediction.predict(trip_id)
-        except (ValueError, FileNotFoundError) as exc:
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}") from exc
+            logger.exception("Prediction failed for trip %s", trip_id)
+            raise HTTPException(status_code=500, detail="Prediction failed; inspect backend logs") from exc
 
     @application.get("/api/evaluate/{trip_id}", response_model=EvaluationResponse, tags=["evaluation"])
     def evaluate_trip(trip_id: str, request: Request):
         s = state(request)
         try:
             return s.evaluation.evaluate(trip_id)
-        except (ValueError, FileNotFoundError) as exc:
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
+            logger.exception("Evaluation failed for trip %s", trip_id)
+            raise HTTPException(status_code=500, detail="Evaluation failed; inspect backend logs") from exc
 
     return application
 
