@@ -1,0 +1,176 @@
+from __future__ import annotations
+
+from time import perf_counter
+
+import pandas as pd
+
+from .candidates import CandidateProvider
+from .data import ReferenceRouteRepository, TripRepository
+from .hmm import HMMConfig, HMMViterbiDecoder
+from .network import RoadNetwork
+from .predictor import CandidatePredictor
+
+
+class PredictionService:
+    def __init__(self, trips: TripRepository, candidate_provider: CandidateProvider,
+                 predictor: CandidatePredictor, decoder: HMMViterbiDecoder):
+        self.trips = trips
+        self.candidate_provider = candidate_provider
+        self.predictor = predictor
+        self.decoder = decoder
+
+    def predict(self, trip_id: str) -> dict:
+        started = perf_counter()
+        trip = self.trips.load_trip(trip_id)
+        network = RoadNetwork(trip)
+        candidates = self.candidate_provider.generate(trip, network)
+        scores = self.predictor.score_candidates(candidates)
+        candidates = candidates.copy()
+        candidates["model_score"] = scores
+        decoded = self.decoder.decode(trip.track, candidates, network)
+        classifier_only = []
+        for obs_index in range(len(trip.track)):
+            group = candidates[candidates.obs_index == obs_index]
+            if group.empty:
+                classifier_only.append(None)
+            else:
+                classifier_only.append(int(group.loc[group.model_score.idxmax(), "arc_id"]))
+        route_continuity = _route_continuity(decoded.arc_ids, network)
+        classifier_continuity = _route_continuity(classifier_only, network)
+
+        route_coordinates: list[list[float]] = []
+        for arc_id in decoded.arc_ids:
+            if arc_id is None:
+                continue
+            edge = network.edge_coordinates(arc_id)
+            if not route_coordinates:
+                route_coordinates.extend(edge)
+            elif route_coordinates[-1] == edge[0]:
+                route_coordinates.append(edge[1])
+            else:
+                route_coordinates.extend(edge)
+
+        matches = []
+        for obs_index, arc_id in enumerate(decoded.arc_ids):
+            selected = candidates[(candidates.obs_index == obs_index) & (candidates.arc_id == arc_id)] if arc_id is not None else candidates.iloc[0:0]
+            row = selected.iloc[0] if not selected.empty else None
+            matches.append({
+                "obs_index": obs_index,
+                "arc_id": int(arc_id) if arc_id is not None else None,
+                "candidate_score": float(decoded.candidate_scores[obs_index]),
+                "distance_m": float(row.distance_m) if row is not None else None,
+            })
+        elapsed = (perf_counter() - started) * 1000.0
+        return {
+            "trip_id": trip.trip_id,
+            "partition": trip.partition,
+            "prediction_mode": self.predictor.mode,
+            "predictor": self.predictor.name,
+            "gps_observations": int(len(trip.track)),
+            "matched_observations": int(sum(x is not None for x in decoded.arc_ids)),
+            "missing_observations": int(decoded.missing_observations),
+            "predicted_arc_ids": decoded.arc_ids,
+            "classifier_only_arc_ids": classifier_only,
+            "route_continuity": round(route_continuity, 6),
+            "classifier_only_route_continuity": round(classifier_continuity, 6),
+            "route_coordinates": route_coordinates,
+            "matches": matches,
+            "viterbi_log_probability": decoded.log_probability,
+            "processing_time_ms": round(elapsed, 2),
+            "coordinate_order": "[longitude, latitude]",
+        }
+
+
+class EvaluationService:
+    """Evaluation is separate from inference; reference labels are read only here."""
+
+    def __init__(self, prediction_service: PredictionService, references: ReferenceRouteRepository):
+        self.prediction_service = prediction_service
+        self.references = references
+
+    def evaluate(self, trip_id: str) -> dict:
+        prediction = self.prediction_service.predict(trip_id)
+        reference = self.references.load_reference_route(trip_id)
+        predicted = _compress_consecutive([x for x in prediction["predicted_arc_ids"] if x is not None])
+        reference_compact = _compress_consecutive(reference)
+        classifier_only = _compress_consecutive([
+            x for x in prediction["classifier_only_arc_ids"] if x is not None
+        ])
+        edit_distance = _levenshtein(predicted, reference_compact)
+        classifier_edit_distance = _levenshtein(classifier_only, reference_compact)
+        denominator = max(len(predicted), len(reference_compact), 1)
+        lcs_length = _lcs_length(predicted, reference_compact)
+        ref_set, pred_set = set(reference_compact), set(predicted)
+        intersection = len(ref_set & pred_set)
+        classifier_intersection = len(ref_set & set(classifier_only))
+        classifier_precision = classifier_intersection / len(set(classifier_only)) if classifier_only else 0.0
+        classifier_recall = classifier_intersection / len(ref_set) if ref_set else 0.0
+        classifier_f1 = (2 * classifier_precision * classifier_recall / (classifier_precision + classifier_recall)
+                         if classifier_precision + classifier_recall else 0.0)
+        precision = intersection / len(pred_set) if pred_set else 0.0
+        recall = intersection / len(ref_set) if ref_set else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        return {
+            "trip_id": trip_id,
+            "prediction_mode": prediction["prediction_mode"],
+            "predicted_sequence_length": len(predicted),
+            "reference_sequence_length": len(reference_compact),
+            "sequence_edit_similarity": round(1.0 - edit_distance / denominator, 6),
+            "classifier_only_sequence_edit_similarity": round(1.0 - classifier_edit_distance / max(len(classifier_only), len(reference_compact), 1), 6),
+            "hmm_route_continuity": prediction["route_continuity"],
+            "classifier_only_route_continuity": prediction["classifier_only_route_continuity"],
+            "classifier_only_arc_set_f1": round(classifier_f1, 6),
+            "lcs_recall_against_reference": round(lcs_length / max(len(reference_compact), 1), 6),
+            "arc_set_precision": round(precision, 6),
+            "arc_set_recall": round(recall, 6),
+            "arc_set_f1": round(f1, 6),
+            "note": (
+                "The .route file is a trip-level arc sequence, not an observation-aligned label array. "
+                "Therefore these are sequence/set metrics, not GPS pointwise accuracy."
+            ),
+        }
+
+
+def _compress_consecutive(values: list[int]) -> list[int]:
+    result = []
+    for value in values:
+        if not result or result[-1] != value:
+            result.append(int(value))
+    return result
+
+
+def _levenshtein(a: list[int], b: list[int]) -> int:
+    if len(a) < len(b):
+        a, b = b, a
+    previous = list(range(len(b) + 1))
+    for i, x in enumerate(a, 1):
+        current = [i]
+        for j, y in enumerate(b, 1):
+            current.append(min(current[-1] + 1, previous[j] + 1, previous[j - 1] + (x != y)))
+        previous = current
+    return previous[-1]
+
+
+def _lcs_length(a: list[int], b: list[int]) -> int:
+    previous = [0] * (len(b) + 1)
+    for x in a:
+        current = [0]
+        for j, y in enumerate(b, 1):
+            current.append(previous[j - 1] + 1 if x == y else max(previous[j], current[-1]))
+        previous = current
+    return previous[-1]
+
+
+def _route_continuity(arc_ids: list[int | None], network) -> float:
+    """Share of consecutive matched predictions that are reachable in the directed graph."""
+    pairs = [(a, b) for a, b in zip(arc_ids, arc_ids[1:]) if a is not None and b is not None]
+    if not pairs:
+        return 1.0
+    connected = 0
+    for previous, current in pairs:
+        # The bound is deliberately generous: this measures topological reachability,
+        # while the HMM transition score separately checks distance plausibility.
+        distance = network.route_distance(previous, 0.5, current, 0.5, 20_000.0)
+        if distance is not None:
+            connected += 1
+    return connected / len(pairs)
