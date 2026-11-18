@@ -1,0 +1,27 @@
+{
+  "pipeline_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "search_radius_m": 50.0,
+  "max_candidates_per_obs": 15,
+  "total_trips": 90,
+  "train_trips": 80,
+  "student_test_trips": 10,
+  "total_observations": 227577,
+  "total_candidates": 1638891,
+  "generated_timestamp": "2026-11-18T06:28:02Z",
+  "feature_order": [
+    "distance_to_segment_m",
+    "projection_fraction",
+    "segment_length_m",
+    "heading_diff_deg",
+    "heading_alignment_cos",
+    "gps_speed_mps",
+    "time_gap_s",
+    "spatial_gap_m",
+    "candidate_rank_dist",
+    "dist_diff_from_nearest_m",
+    "speed_length_ratio",
+    "is_zero_speed",
+    "reliability_flag"
+  ]
+}

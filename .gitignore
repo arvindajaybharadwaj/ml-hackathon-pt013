@@ -1,11 +1,29 @@
-.DS_STORE
+# Project files and local data
 /output
 /PathSnap_student_materials
 /Student folder
 /tmp
-__pycache__/
-*.pyc
 PT-013_Team_Execution_Guide.pdf
 
 ml/README.md
 ml/requirements.txt
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Pytest & testing caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# System files
+Thumbs.db
+.DS_STORE
+.DS_Store
