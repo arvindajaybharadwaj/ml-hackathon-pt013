@@ -1,0 +1,7 @@
+-r requirements_data.txt
+-r ml/requirements.txt
+pytest>=8,<10
+torch==2.12.1
+modal>=1,<2
+-r backend/requirements.txt
+folium==0.20.0

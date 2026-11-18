@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from data_pipeline import load_inputs, build_candidates
 
-ROOT_DIR = Path("F:/ML_QUIZ/Student folder/Student folder")
+ROOT_DIR = Path(__file__).resolve().parents[2] / "Student folder"
 
 
 def test_no_leakage_in_candidate_batch():

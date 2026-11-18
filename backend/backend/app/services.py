@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from time import perf_counter
+from functools import lru_cache
 
 from .candidates import CandidateProvider
 from .data import ReferenceRouteRepository, TripRepository
@@ -17,6 +18,7 @@ class PredictionService:
         self.predictor = predictor
         self.decoder = decoder
 
+    @lru_cache(maxsize=4)
     def predict(self, trip_id: str) -> dict:
         started = perf_counter()
         trip = self.trips.load_trip(trip_id)

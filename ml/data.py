@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import json
+import hashlib
 import numpy as np
 import pandas as pd
 
@@ -95,7 +96,35 @@ def read_table(root, name):
 
 def load_dataset(root):
     root = Path(root)
+    schema_path = root / 'feature_schema.json'
+    if not schema_path.exists():
+        schema_path = root.parent / 'feature_schema.json'
+    schema = json.loads(schema_path.read_text())
+    if 'feature_names' not in schema:
+        schema['feature_names'] = schema['feature_order']
+    if 'feature_order' in schema and schema['feature_names'] != schema['feature_order']:
+        raise ValueError('feature_names and feature_order disagree')
+    if (root / 'train').is_dir():
+        tables = []
+        for name in ['observations', 'candidates', 'labels']:
+            parts = []
+            for partition in ['train', 'student_test']:
+                frame = read_table(root / partition, name)
+                if 'partition' in frame and not frame.partition.eq(partition).all():
+                    raise ValueError('Partition column disagrees with directory')
+                if name == 'observations':
+                    frame['partition'] = partition
+                parts.append(frame)
+            tables.append(pd.concat(parts, ignore_index=True))
+        return Dataset(*tables, schema).validate()
     return Dataset(
         *(read_table(root, name) for name in ['observations', 'candidates', 'labels']),
-        json.loads((root / 'feature_schema.json').read_text()),
+        schema,
     ).validate()
+
+
+def fingerprint(dataset):
+    digest = hashlib.sha256(json.dumps(dataset.schema, sort_keys=True).encode())
+    for frame in [dataset.observations, dataset.candidates, dataset.labels]:
+        digest.update(pd.util.hash_pandas_object(frame, index=False).values.tobytes())
+    return digest.hexdigest()

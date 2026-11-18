@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 from data_pipeline import load_inputs, load_labels, load_raw_route, align_route_to_observations, LabelTable
 
-ROOT_DIR = Path("F:/ML_QUIZ/Student folder/Student folder")
+ROOT_DIR = Path(__file__).resolve().parents[2] / "Student folder"
 
 
 def test_alignment_train_trip():

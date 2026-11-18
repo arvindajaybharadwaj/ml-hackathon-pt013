@@ -16,6 +16,23 @@ class CandidatePredictor(Protocol):
     def score_candidates(self, candidates: pd.DataFrame) -> np.ndarray: ...
 
 
+class BundleCandidatePredictor:
+    """Use the versioned ML bundle and its training-time feature order unchanged."""
+    mode = 'trained_model'
+
+    def __init__(self, directory: Path):
+        from ml.predictor import load_model
+        self.predictor = load_model(directory)
+        self.name = self.predictor.metadata['model_name']
+
+    def score_candidates(self, candidates: pd.DataFrame) -> np.ndarray:
+        scores = self.predictor.score_candidates({
+            'candidates': candidates,
+            'schema_version': candidates.attrs.get('schema_version'),
+        })
+        return scores.p_match.to_numpy(dtype=float)
+
+
 class DistanceFallbackPredictor:
     """Development-only scoring fallback. It is NOT Person 2's trained ML model."""
     name = "distance-only-development-fallback"

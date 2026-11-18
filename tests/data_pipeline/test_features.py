@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from data_pipeline import load_inputs, build_candidates, FEATURE_NAMES
 
-ROOT_DIR = Path("F:/ML_QUIZ/Student folder/Student folder")
-SCHEMA_PATH = Path("F:/ML_QUIZ/New folder/feature_schema.json")
+ROOT_DIR = Path(__file__).resolve().parents[2] / "Student folder"
+SCHEMA_PATH = Path(__file__).resolve().parents[2] / "feature_schema.json"
 
 
 def test_feature_schema_matches_code():

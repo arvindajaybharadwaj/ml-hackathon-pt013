@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[3]
+
 
 def _as_bool(value: str | None, default: bool) -> bool:
     if value is None:
@@ -35,9 +37,10 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        data_root = Path(os.getenv("PATHSNAP_DATA_ROOT", "./data")).expanduser().resolve()
-        candidate_dir_raw = os.getenv("PATHSNAP_CANDIDATE_DIR", "").strip()
-        model_path_raw = os.getenv("PATHSNAP_MODEL_PATH", "").strip()
+        data_root = Path(os.getenv("PATHSNAP_DATA_ROOT", str(ROOT / 'Student folder'))).expanduser().resolve()
+        partition = os.getenv("PATHSNAP_PARTITION", "student_test").strip()
+        candidate_dir_raw = os.getenv("PATHSNAP_CANDIDATE_DIR", str(ROOT / 'prepared_data' / partition)).strip()
+        model_path_raw = os.getenv("PATHSNAP_MODEL_PATH", str(ROOT / 'artifacts/model')).strip()
         features_raw = os.getenv("PATHSNAP_MODEL_FEATURES", "").strip()
         origins_raw = os.getenv(
             "PATHSNAP_CORS_ORIGINS",
@@ -45,13 +48,13 @@ class Settings:
         )
         return cls(
             data_root=data_root,
-            partition=os.getenv("PATHSNAP_PARTITION", "student_test").strip(),
+            partition=partition,
             candidate_dir=Path(candidate_dir_raw).expanduser().resolve() if candidate_dir_raw else None,
             model_path=Path(model_path_raw).expanduser().resolve() if model_path_raw else None,
             model_features=tuple(x.strip() for x in features_raw.split(",") if x.strip()),
-            model_mode=os.getenv("PATHSNAP_MODEL_MODE", "distance_fallback").strip().lower(),
+            model_mode=os.getenv("PATHSNAP_MODEL_MODE", "bundle").strip().lower(),
             positive_class=os.getenv("PATHSNAP_POSITIVE_CLASS", "1").strip(),
-            allow_dev_fallback=_as_bool(os.getenv("PATHSNAP_ALLOW_DEV_FALLBACK"), True),
+            allow_dev_fallback=_as_bool(os.getenv("PATHSNAP_ALLOW_DEV_FALLBACK"), False),
             candidate_radius_m=float(os.getenv("PATHSNAP_CANDIDATE_RADIUS_M", "100")),
             max_candidates=int(os.getenv("PATHSNAP_MAX_CANDIDATES", "8")),
             emission_sigma_m=float(os.getenv("PATHSNAP_EMISSION_SIGMA_M", "25")),
@@ -60,5 +63,5 @@ class Settings:
             missing_state_penalty=float(os.getenv("PATHSNAP_MISSING_STATE_PENALTY", "6")),
             unreachable_penalty=float(os.getenv("PATHSNAP_UNREACHABLE_PENALTY", "12")),
             cors_origins=tuple(x.strip() for x in origins_raw.split(",") if x.strip()),
-            environment=os.getenv("PATHSNAP_ENV", "development").strip().lower(),
+            environment=os.getenv("PATHSNAP_ENV", "production").strip().lower(),
         )

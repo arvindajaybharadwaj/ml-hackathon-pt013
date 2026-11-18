@@ -1,0 +1,137 @@
+{
+  "health": {
+    "status": "healthy",
+    "partition": "student_test",
+    "model_loaded": true,
+    "predictor": "hist_gradient_boosting",
+    "predictor_mode": "trained_model",
+    "candidate_provider": "PreparedCandidateProvider",
+    "data_root_exists": true,
+    "dataset_available": true,
+    "hmm_enabled": true,
+    "prediction_mode": "trained_model"
+  },
+  "checked": [
+    {
+      "trip_id": "00000000",
+      "observations": 2503,
+      "candidate_rows": 12143,
+      "matched_observations": 2503,
+      "hmm_continuity": 0.984812,
+      "classifier_continuity": 0.952438,
+      "sequence_similarity": 0.60687,
+      "classifier_sequence_similarity": 0.415816,
+      "route_arc_set_f1": 0.863158,
+      "wall_seconds": 2.014
+    },
+    {
+      "trip_id": "00000007",
+      "observations": 1354,
+      "candidate_rows": 4924,
+      "matched_observations": 1354,
+      "hmm_continuity": 0.999261,
+      "classifier_continuity": 0.992609,
+      "sequence_similarity": 0.937984,
+      "classifier_sequence_similarity": 0.49187,
+      "route_arc_set_f1": 0.971888,
+      "wall_seconds": 0.734
+    },
+    {
+      "trip_id": "00000009",
+      "observations": 1049,
+      "candidate_rows": 12849,
+      "matched_observations": 1049,
+      "hmm_continuity": 0.901718,
+      "classifier_continuity": 0.846374,
+      "sequence_similarity": 0.661638,
+      "classifier_sequence_similarity": 0.62253,
+      "route_arc_set_f1": 0.82807,
+      "wall_seconds": 2.153
+    },
+    {
+      "trip_id": "00000040",
+      "observations": 2995,
+      "candidate_rows": 15721,
+      "matched_observations": 2995,
+      "hmm_continuity": 0.977956,
+      "classifier_continuity": 0.951236,
+      "sequence_similarity": 0.477686,
+      "classifier_sequence_similarity": 0.36352,
+      "route_arc_set_f1": 0.90469,
+      "wall_seconds": 2.428
+    },
+    {
+      "trip_id": "00000052",
+      "observations": 262,
+      "candidate_rows": 2311,
+      "matched_observations": 262,
+      "hmm_continuity": 0.965517,
+      "classifier_continuity": 0.931034,
+      "sequence_similarity": 0.831579,
+      "classifier_sequence_similarity": 0.715789,
+      "route_arc_set_f1": 0.892655,
+      "wall_seconds": 0.434
+    },
+    {
+      "trip_id": "00000056",
+      "observations": 3958,
+      "candidate_rows": 38266,
+      "matched_observations": 3958,
+      "hmm_continuity": 0.950215,
+      "classifier_continuity": 0.869345,
+      "sequence_similarity": 0.722849,
+      "classifier_sequence_similarity": 0.594089,
+      "route_arc_set_f1": 0.908828,
+      "wall_seconds": 6.481
+    },
+    {
+      "trip_id": "00000065",
+      "observations": 768,
+      "candidate_rows": 8649,
+      "matched_observations": 768,
+      "hmm_continuity": 0.966102,
+      "classifier_continuity": 0.890482,
+      "sequence_similarity": 0.561321,
+      "classifier_sequence_similarity": 0.398577,
+      "route_arc_set_f1": 0.886598,
+      "wall_seconds": 1.566
+    },
+    {
+      "trip_id": "00000076",
+      "observations": 1486,
+      "candidate_rows": 18907,
+      "matched_observations": 1486,
+      "hmm_continuity": 0.907071,
+      "classifier_continuity": 0.832997,
+      "sequence_similarity": 0.510601,
+      "classifier_sequence_similarity": 0.42921,
+      "route_arc_set_f1": 0.724739,
+      "wall_seconds": 3.412
+    },
+    {
+      "trip_id": "00000077",
+      "observations": 3911,
+      "candidate_rows": 41326,
+      "matched_observations": 3911,
+      "hmm_continuity": 0.935038,
+      "classifier_continuity": 0.892327,
+      "sequence_similarity": 0.141804,
+      "classifier_sequence_similarity": 0.116345,
+      "route_arc_set_f1": 0.747059,
+      "wall_seconds": 5.503
+    },
+    {
+      "trip_id": "00000091",
+      "observations": 874,
+      "candidate_rows": 9361,
+      "matched_observations": 874,
+      "hmm_continuity": 0.925544,
+      "classifier_continuity": 0.848797,
+      "sequence_similarity": 0.469256,
+      "classifier_sequence_similarity": 0.404432,
+      "route_arc_set_f1": 0.821429,
+      "wall_seconds": 1.68
+    }
+  ],
+  "complete": true
+}

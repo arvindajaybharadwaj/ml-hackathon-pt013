@@ -1,0 +1,9 @@
+# Tested together locally and on Modal; sklearn checkpoints require matching versions.
+numpy==2.5.0
+pandas==3.0.3
+scipy==1.18.0
+scikit-learn==1.9.0
+joblib==1.5.3
+threadpoolctl>=3,<4
+optuna==5.1.0
+pyarrow==24.0.0

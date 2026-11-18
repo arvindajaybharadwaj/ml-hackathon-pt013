@@ -1,0 +1,36 @@
+{
+  "model_name": "hist_gradient_boosting",
+  "seed": 13,
+  "training_device": "cpu",
+  "parameters": {
+    "categorical_features": "from_dtype",
+    "class_weight": null,
+    "early_stopping": false,
+    "interaction_cst": null,
+    "l2_regularization": 3.146547470326951,
+    "learning_rate": 0.09782980096688124,
+    "loss": "log_loss",
+    "max_bins": 255,
+    "max_depth": null,
+    "max_features": 1.0,
+    "max_iter": 80,
+    "max_leaf_nodes": 30,
+    "min_samples_leaf": 20,
+    "monotonic_cst": null,
+    "n_iter_no_change": 10,
+    "random_state": 13,
+    "scoring": "loss",
+    "tol": 1e-07,
+    "validation_fraction": 0.1,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "tuned": true,
+  "input_directory": "/input/prepared_data",
+  "versions": {
+    "scikit-learn": "1.9.0",
+    "numpy": "2.5.0",
+    "pandas": "3.0.3",
+    "joblib": "1.5.3"
+  }
+}

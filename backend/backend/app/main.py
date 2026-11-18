@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from .candidates import NearestArcCandidateProvider, PreparedCandidateProvider
 from .config import Settings
 from .data import ReferenceRouteRepository, TripRepository
 from .hmm import HMMConfig, HMMViterbiDecoder
-from .predictor import DistanceFallbackPredictor, JoblibCandidatePredictor
+from .predictor import DistanceFallbackPredictor, JoblibCandidatePredictor, BundleCandidatePredictor
 from .schemas import EvaluationResponse, HealthResponse, PredictionResponse, TripSummary
 from .services import EvaluationService, PredictionService
 
@@ -37,6 +38,10 @@ def build_services(settings: Settings):
         if production or not settings.allow_dev_fallback:
             raise RuntimeError("Distance fallback is development-only; configure Person 2's trained model")
         predictor = DistanceFallbackPredictor(settings.emission_sigma_m)
+    elif settings.model_mode == 'bundle':
+        if not settings.model_path:
+            raise RuntimeError('PATHSNAP_MODEL_PATH must point to a trained model bundle')
+        predictor = BundleCandidatePredictor(settings.model_path)
     else:
         if not settings.model_path:
             raise RuntimeError("PATHSNAP_MODEL_PATH must point to Person 2's model artifact")
@@ -51,9 +56,8 @@ def build_services(settings: Settings):
         trip_ids = trips.list_trip_ids()
         if not trip_ids:
             raise RuntimeError("Production partition contains no valid trip folders")
-        missing_candidate_trips = [trip_id for trip_id in trip_ids
-            if not ((settings.candidate_dir / f"{trip_id}.csv").is_file()
-                    or (settings.candidate_dir / f"{trip_id}.parquet").is_file())]
+        available = candidate_provider.available_trip_ids()
+        missing_candidate_trips = [trip_id for trip_id in trip_ids if trip_id not in available]
         if missing_candidate_trips:
             raise RuntimeError(
                 "Prepared candidate files are missing for trips: "
@@ -180,6 +184,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except Exception as exc:
             logger.exception("Evaluation failed for trip %s", trip_id)
             raise HTTPException(status_code=500, detail="Evaluation failed; inspect backend logs") from exc
+
+    @application.get('/api/maps/{trip_id}', response_class=HTMLResponse, tags=['prediction'])
+    def route_map(trip_id: str, request: Request):
+        from .maps import render_route_map
+        s = state(request)
+        try:
+            prediction = s.prediction.predict(trip_id)
+            return render_route_map(s.trips.load_trip(trip_id), prediction)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return application
 

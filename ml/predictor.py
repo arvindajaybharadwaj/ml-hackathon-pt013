@@ -14,7 +14,8 @@ class Predictor:
         if isinstance(batch, pd.DataFrame):
             raise ValueError('Pass {candidates, schema_version}, not an unversioned DataFrame')
         df = batch['candidates'] if isinstance(batch,dict) else batch.candidates
-        version = batch['schema_version'] if isinstance(batch,dict) else batch.schema['schema_version']
+        version = (batch['schema_version'] if isinstance(batch, dict) else
+                   batch.schema_version if hasattr(batch, 'schema_version') else batch.schema['schema_version'])
         if version != self.schema['schema_version']:
             raise ValueError('Feature schema version mismatch')
         missing = set(CANDIDATE_KEY+['arc_id']+self.schema['feature_names'])-set(df)
@@ -26,7 +27,7 @@ class Predictor:
             x = df[self.schema['feature_names']].to_numpy(dtype=float)
             if np.isinf(x).any(): raise ValueError('Infinite inference features')
             positive = list(self.pipeline.classes_).index(1)
-            out['p_match'] = np.clip(self.pipeline.predict_proba(x)[:,positive],1e-9,1-1e-9)
+            out['p_match'] = np.clip(self.pipeline.predict_proba(x)[:,positive].astype(float),1e-9,1-1e-9)
             out['emission_prob'] = out.p_match / out.groupby(KEY).p_match.transform('sum')
         else:
             out['p_match'] = pd.Series(dtype=float)

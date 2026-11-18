@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 from typing import Protocol
 
 import numpy as np
@@ -24,11 +25,26 @@ class PreparedCandidateProvider:
 
     def __init__(self, candidate_dir: Path):
         self.candidate_dir = Path(candidate_dir)
+        self.schema_version = None
+        for parent in [self.candidate_dir, *list(self.candidate_dir.parents)[:2]]:
+            schema = parent / 'feature_schema.json'
+            if schema.is_file():
+                self.schema_version = json.loads(schema.read_text())['schema_version']
+                break
+
+    def available_trip_ids(self) -> set[str]:
+        combined = self.candidate_dir / 'candidates.parquet'
+        if combined.is_file():
+            return set(pd.read_parquet(combined, columns=['trip_id']).trip_id.astype(str))
+        return {p.stem for ext in ('*.csv', '*.parquet') for p in self.candidate_dir.glob(ext)}
 
     def generate(self, trip: TripData, network: RoadNetwork) -> pd.DataFrame:
         csv_path = self.candidate_dir / f"{trip.trip_id}.csv"
         parquet_path = self.candidate_dir / f"{trip.trip_id}.parquet"
-        if parquet_path.is_file():
+        combined = self.candidate_dir / 'candidates.parquet'
+        if combined.is_file():
+            df = pd.read_parquet(combined, filters=[('trip_id', '=', trip.trip_id)])
+        elif parquet_path.is_file():
             df = pd.read_parquet(parquet_path)
         elif csv_path.is_file():
             df = pd.read_csv(csv_path)
@@ -36,10 +52,19 @@ class PreparedCandidateProvider:
             raise FileNotFoundError(
                 f"No prepared candidates for {trip.trip_id}; expected {csv_path.name} or {parquet_path.name}"
             )
+        if 'trip_id' in df and not df.trip_id.eq(trip.trip_id).all():
+            raise ValueError('Prepared candidates contain another trip')
+        # Preserve the real ML feature names; add decoder-specific aliases only.
+        for target, source in [('obs_index', 'obs_id'), ('distance_m', 'distance_to_segment_m'),
+                               ('fraction', 'projection_fraction')]:
+            if target not in df and source in df:
+                df[target] = df[source]
         missing = REQUIRED_CANDIDATE_COLUMNS - set(df.columns)
         if missing:
             raise ValueError(f"Person 1 candidate table is missing columns: {sorted(missing)}")
-        return _validate_candidates(df, trip)
+        result = _validate_candidates(df, trip)
+        result.attrs['schema_version'] = self.schema_version
+        return result
 
 
 class NearestArcCandidateProvider:

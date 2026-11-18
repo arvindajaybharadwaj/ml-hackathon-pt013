@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from data_pipeline import load_inputs, build_candidates, CandidateBatch
 
-ROOT_DIR = Path("F:/ML_QUIZ/Student folder/Student folder")
+ROOT_DIR = Path(__file__).resolve().parents[2] / "Student folder"
 
 
 def test_build_candidates_basic():

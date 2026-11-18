@@ -9,12 +9,19 @@ from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassif
 
 MODEL_NAMES = ['logistic_regression','gaussian_nb','decision_tree','random_forest','hist_gradient_boosting']
 
-def build_model(name, seed=13, params=None):
+def build_model(name, seed=13, params=None, device='auto', epochs=15, threads=1):
+    if name == 'torch_mlp':
+        from .neural import TorchCandidateClassifier
+        estimator = TorchCandidateClassifier(seed=seed, device=device, epochs=epochs)
+        if params:
+            estimator.set_params(**params)
+        return Pipeline([('imputer', SimpleImputer(strategy='median', keep_empty_features=True)),
+                         ('scale', StandardScaler()), ('model', estimator)])
     constructors = {
         'logistic_regression':lambda:LogisticRegression(max_iter=1500,C=1.,random_state=seed),
         'gaussian_nb':lambda:GaussianNB(var_smoothing=1e-9),
         'decision_tree':lambda:DecisionTreeClassifier(max_depth=8,min_samples_leaf=4,random_state=seed),
-        'random_forest':lambda:RandomForestClassifier(n_estimators=80,max_depth=12,min_samples_leaf=2,n_jobs=1,random_state=seed),
+        'random_forest':lambda:RandomForestClassifier(n_estimators=80,max_depth=12,min_samples_leaf=2,n_jobs=threads,random_state=seed),
         # Internal row-wise early stopping is disabled: validation is by whole trip.
         'hist_gradient_boosting':lambda:HistGradientBoostingClassifier(max_iter=80,max_leaf_nodes=15,
                       learning_rate=.1,l2_regularization=1.,early_stopping=False,random_state=seed)}
@@ -27,6 +34,10 @@ def build_model(name, seed=13, params=None):
 
 
 def suggest_parameters(trial, name):
+    if name == 'torch_mlp':
+        return {'hidden_size': trial.suggest_categorical('hidden_size', [32, 64, 128]),
+                'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-2, log=True)}
     if name == 'logistic_regression': return {'C':trial.suggest_float('C',1e-3,100,log=True)}
     if name == 'gaussian_nb': return {'var_smoothing':trial.suggest_float('var_smoothing',1e-11,1e-3,log=True)}
     if name == 'decision_tree':
