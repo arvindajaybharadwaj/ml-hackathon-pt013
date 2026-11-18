@@ -1,0 +1,51 @@
+{
+  "train": {
+    "trips": 80,
+    "observations": 208417,
+    "candidates": 1474434,
+    "valid_aligned_observations": 177355,
+    "alignment_coverage": 0.8509622535589707,
+    "raw_nonfinite_values": 0,
+    "one_second_intervals": 201053,
+    "intervals": 208337,
+    "one_second_fraction": 0.96503741534149,
+    "max_gap_s": 153064.0,
+    "candidate_feature_missing_values": 0,
+    "aligned_candidate_rows": 1371554,
+    "positive_candidate_rows": 177025,
+    "zero_candidate_observations": 18232,
+    "longitude_range": [
+      -100.418538,
+      137.237029
+    ],
+    "latitude_range": [
+      -34.640291,
+      61.267258
+    ]
+  },
+  "student_test": {
+    "trips": 10,
+    "observations": 19160,
+    "candidates": 164457,
+    "valid_aligned_observations": 17821,
+    "alignment_coverage": 0.9301148225469729,
+    "raw_nonfinite_values": 0,
+    "one_second_intervals": 18886,
+    "intervals": 19150,
+    "one_second_fraction": 0.9862140992167102,
+    "max_gap_s": 210.0,
+    "candidate_feature_missing_values": 0,
+    "aligned_candidate_rows": 151504,
+    "positive_candidate_rows": 17815,
+    "zero_candidate_observations": 0,
+    "longitude_range": [
+      -93.424337,
+      77.271115
+    ],
+    "latitude_range": [
+      42.645529,
+      61.69959
+    ]
+  },
+  "combined_one_second_fraction": 0.9668200820266653
+}

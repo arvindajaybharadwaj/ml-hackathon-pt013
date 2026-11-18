@@ -33,7 +33,7 @@ class TorchCandidateClassifier(ClassifierMixin, BaseEstimator):
             torch.nn.Linear(self.hidden_size, self.hidden_size // 2), torch.nn.ReLU(),
             torch.nn.Linear(self.hidden_size // 2, 1))
 
-    def fit(self, X, y):
+    def fit(self, X, y, validation_data=None):
         import torch
         if self.epochs < 1 or self.batch_size < 1:
             raise ValueError('epochs and batch_size must be positive')
@@ -51,6 +51,10 @@ class TorchCandidateClassifier(ClassifierMixin, BaseEstimator):
         target = torch.as_tensor(np.asarray(y, dtype=np.float32), device=self.device_)
         rng = np.random.default_rng(self.seed)
         self.loss_curve_ = []
+        self.validation_loss_curve_ = []
+        if validation_data is not None:
+            val_x = torch.as_tensor(np.asarray(validation_data[0], dtype=np.float32), device=self.device_)
+            val_y = torch.as_tensor(np.asarray(validation_data[1], dtype=np.float32), device=self.device_)
         for _ in range(self.epochs):
             order = torch.as_tensor(rng.permutation(len(x)), device=self.device_)
             total = torch.zeros((), device=self.device_)
@@ -63,6 +67,15 @@ class TorchCandidateClassifier(ClassifierMixin, BaseEstimator):
                 optimizer.step()
                 total += loss.detach() * len(idx)
             self.loss_curve_.append(float(total.cpu()) / len(x))
+            if validation_data is not None:
+                net.eval()
+                validation_loss = torch.zeros((), device=self.device_)
+                with torch.inference_mode():
+                    for start in range(0, len(val_x), self.batch_size):
+                        end = start + self.batch_size
+                        loss = criterion(net(val_x[start:end]).squeeze(-1), val_y[start:end])
+                        validation_loss += loss * len(val_x[start:end])
+                self.validation_loss_curve_.append(float(validation_loss.cpu()) / len(val_x))
         # numpy state avoids tying joblib bundles to Metal/CUDA at inference time.
         self.weights_ = {k: v.detach().cpu().numpy().copy() for k, v in net.state_dict().items()}
         return self

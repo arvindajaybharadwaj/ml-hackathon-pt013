@@ -10,7 +10,7 @@
       "kx": "111320.0 * cos(radians(lat_mean)) [metres / degree longitude]",
       "ky": "111320.0 [metres / degree latitude]"
     },
-    "distortion": "< 0.01% within 50 km trajectory extents in Darmstadt region (~49.85°N, 8.65°E)"
+    "distortion": "Trip-local approximation; no universal distortion bound was established across all geographically diverse trips."
   },
   "candidate_search_defaults": {
     "search_radius_m": 50.0,
@@ -38,7 +38,10 @@
       "index": 0,
       "dtype": "float32",
       "unit": "metres",
-      "valid_range": [0.0, 50.0],
+      "valid_range": [
+        0.0,
+        50.0
+      ],
       "description": "Perpendicular / clamped Euclidean distance from the GPS observation point to the candidate directed road segment in metres.",
       "missing_value_policy": "Imputed directly via spatial index query; zero-candidate observations yield no candidate rows."
     },
@@ -47,7 +50,10 @@
       "index": 1,
       "dtype": "float32",
       "unit": "unitless",
-      "valid_range": [0.0, 1.0],
+      "valid_range": [
+        0.0,
+        1.0
+      ],
       "description": "Normalized scalar fraction along the directed road segment where the observation projects. 0.0 corresponds to from_node_id, 1.0 corresponds to to_node_id.",
       "missing_value_policy": "Clamped to [0.0, 1.0]."
     },
@@ -56,16 +62,23 @@
       "index": 2,
       "dtype": "float32",
       "unit": "metres",
-      "valid_range": [0.0, 5000.0],
       "description": "Physical metric length of the candidate road segment between its start and end nodes.",
-      "missing_value_policy": "Computed from road network node coordinates; minimum clipped to 1e-3 to avoid division by zero."
+      "missing_value_policy": "Computed from road network node coordinates; minimum clipped to 1e-3 to avoid division by zero.",
+      "nominal_range": [
+        0.0,
+        5000.0
+      ],
+      "range_policy": "Descriptive nominal range, not clipping or a validated universal bound."
     },
     {
       "name": "heading_diff_deg",
       "index": 3,
       "dtype": "float32",
       "unit": "degrees",
-      "valid_range": [0.0, 180.0],
+      "valid_range": [
+        0.0,
+        180.0
+      ],
       "description": "Absolute angular difference between trajectory heading (vector between consecutive GPS points) and directed road segment bearing. Folded into [0, 180].",
       "missing_value_policy": "Set to 90.0 degrees (neutral/perpendicular) when vehicle is stationary (speed < 0.5 m/s)."
     },
@@ -74,7 +87,10 @@
       "index": 4,
       "dtype": "float32",
       "unit": "unitless",
-      "valid_range": [-1.0, 1.0],
+      "valid_range": [
+        -1.0,
+        1.0
+      ],
       "description": "Cosine of heading_diff_deg. +1.0 indicates identical direction, 0.0 perpendicular, -1.0 opposite direction (e.g. wrong way on a one-way street).",
       "missing_value_policy": "Evaluated as cos(radians(heading_diff_deg)); equals 0.0 when vehicle is stationary."
     },
@@ -83,34 +99,49 @@
       "index": 5,
       "dtype": "float32",
       "unit": "metres/second",
-      "valid_range": [0.0, 60.0],
       "description": "Empirical ground speed computed as spatial_gap_m divided by time_gap_s.",
-      "missing_value_policy": "Forward filled from step 0 to step 1 for first observation t=0."
+      "missing_value_policy": "First observation copies the first computed step when available; single-observation trips use deterministic defaults.",
+      "nominal_range": [
+        0.0,
+        60.0
+      ],
+      "range_policy": "Descriptive nominal range, not clipping or a validated universal bound."
     },
     {
       "name": "time_gap_s",
       "index": 6,
       "dtype": "float32",
       "unit": "seconds",
-      "valid_range": [0.0, 86400.0],
       "description": "Time elapsed since previous GPS observation (delta t). Nominally 1.0 s for 1Hz sampling.",
-      "missing_value_policy": "Set to 1.0 s for first observation t=0."
+      "missing_value_policy": "First observation copies the first computed step when available; single-observation trips use deterministic defaults.",
+      "nominal_range": [
+        0.0,
+        86400.0
+      ],
+      "range_policy": "Descriptive nominal range, not clipping or a validated universal bound."
     },
     {
       "name": "spatial_gap_m",
       "index": 7,
       "dtype": "float32",
       "unit": "metres",
-      "valid_range": [0.0, 5000.0],
       "description": "Metric Euclidean distance travelled since previous GPS observation.",
-      "missing_value_policy": "Set to 0.0 m for first observation t=0."
+      "missing_value_policy": "First observation copies the first computed step when available; single-observation trips use deterministic defaults.",
+      "nominal_range": [
+        0.0,
+        5000.0
+      ],
+      "range_policy": "Descriptive nominal range, not clipping or a validated universal bound."
     },
     {
       "name": "candidate_rank_dist",
       "index": 8,
       "dtype": "int32",
       "unit": "ordinal rank",
-      "valid_range": [0, 14],
+      "valid_range": [
+        0,
+        14
+      ],
       "description": "Ascending distance rank of this candidate among all candidates for the given observation (0 = nearest candidate).",
       "missing_value_policy": "Computed deterministically by sorting candidate distances per observation."
     },
@@ -119,7 +150,10 @@
       "index": 9,
       "dtype": "float32",
       "unit": "metres",
-      "valid_range": [0.0, 50.0],
+      "valid_range": [
+        0.0,
+        50.0
+      ],
       "description": "Distance difference between this candidate and the rank-0 (nearest) candidate for the same observation. Identically 0.0 for rank-0.",
       "missing_value_policy": "Always non-negative."
     },
@@ -128,16 +162,23 @@
       "index": 10,
       "dtype": "float32",
       "unit": "unitless",
-      "valid_range": [0.0, 100.0],
       "description": "Ratio of distance travelled in current time step (gps_speed_mps * time_gap_s) to the candidate segment length.",
-      "missing_value_policy": "Denominator clamped to max(segment_length_m, 1.0)."
+      "missing_value_policy": "Denominator clamped to max(segment_length_m, 1.0).",
+      "nominal_range": [
+        0.0,
+        100.0
+      ],
+      "range_policy": "Descriptive nominal range, not clipping or a validated universal bound."
     },
     {
       "name": "is_zero_speed",
       "index": 11,
       "dtype": "int32",
       "unit": "binary flag",
-      "valid_range": [0, 1],
+      "valid_range": [
+        0,
+        1
+      ],
       "description": "Binary indicator set to 1 if gps_speed_mps < 0.5 m/s (vehicle stopped / idling), 0 otherwise.",
       "missing_value_policy": "Computed deterministically."
     },
@@ -146,7 +187,10 @@
       "index": 12,
       "dtype": "int32",
       "unit": "binary flag",
-      "valid_range": [0, 1],
+      "valid_range": [
+        0,
+        1
+      ],
       "description": "Quality flag set to 1 if sampling interval is normal (0.5s <= dt <= 3.0s), vehicle speed is plausible (<= 45 m/s), and candidate distance <= 50m. Set to 0 otherwise.",
       "missing_value_policy": "Computed deterministically."
     }

@@ -123,3 +123,26 @@ With both local servers running, exercise all ten trips through the frontend pro
 Results are written to `evidence/integration/api_checks.json`. This checks predictions, evaluation and map endpoints with the actual selected model, rather than a distance fallback.
 
 Completed Modal training took 866 seconds (14.4 minutes). Trip-grouped candidate Macro F1 improved from 0.880544 to 0.880768 after tuning. Selected histogram gradient boosting student-test Top-1 accuracy is 0.823859 on 17,821 validly aligned observations, with alignment coverage 0.930115 across 19,160 observations. This is classifier accuracy; route/HMM metrics are reported separately by the backend.
+
+## Completed comparison and decoder evidence
+
+The dashboard now includes a Model Comparison section with the actual six-model comparison, tuned model row, CV/test metrics, log loss, scoring/training time and learning-history graphs. Reproducible source records, plots and confusion matrices are tracked in `evidence/models/`.
+
+The selected HMM settings are stored in `artifacts/model/hmm_config.json`. They were tuned over 12 configurations on all ten permitted student-test trips. Pooled aligned observation Top-1 is 82.39% for the classifier and 85.55% after HMM decoding. Decoder results are development measurements because its tuning used the student-test labels. Full metrics and search records are in `evidence/hmm/`.
+
+Route output includes `route_segments` and expanded `predicted_route_arc_ids`. Valid bounded directed paths fill intermediate road edges; missing or unreachable connections remain explicit breaks. The legacy `route_coordinates` field contains only the longest continuous piece. Direct continuity counts missing observation endpoints as breaks.
+
+### Two laptop launcher
+
+Start `bash run_backend.sh` on the API laptop. On the UI laptop, install the frontend and use the backend laptop's actual LAN IP:
+
+```bash
+npm --prefix frontend ci
+node frontend/start-demo.mjs --backend http://192.168.1.10:8000
+```
+
+The UI laptop needs Node.js only, not Python/model/data files. The launcher checks the API before starting the proxy. Detailed instructions, Windows notes and reference-free reserved-partition preparation are in [docs/TWO_LAPTOP_DEMO.md](docs/TWO_LAPTOP_DEMO.md).
+
+All ten student-test trips passed through a separate frontend process targeting the API's actual LAN address (`evidence/integration/lan_proxy_checks.json`). A two-physical-laptop rehearsal and organiser-reserved data validation remain external steps.
+
+Report work is currently deferred at the user's request. Any local report draft is not part of the completed/pushed deliverables.

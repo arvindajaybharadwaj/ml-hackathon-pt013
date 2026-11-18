@@ -48,6 +48,8 @@ def run_full_pipeline(raw_root: Path, output_root: Path, config: Dict[str, Any] 
     evidence_dir = output_root / "evidence" / "data"
     prep_dir.mkdir(parents=True, exist_ok=True)
     evidence_dir.mkdir(parents=True, exist_ok=True)
+    import shutil
+    shutil.copy2(repo_root / 'feature_schema.json', prep_dir / 'feature_schema.json')
     
     inventory_records = []
     
@@ -92,7 +94,7 @@ def run_full_pipeline(raw_root: Path, output_root: Path, config: Dict[str, Any] 
             obs_df = inputs.observations
             time_arr = obs_df["timestamp_s"].values
             dt = np.diff(time_arr) if len(time_arr) > 1 else np.array([1.0])
-            all_dt.extend(dt[dt <= 10.0]) # sample normal dt
+            all_dt.extend(dt) # Preserve every interval for a correct sampling denominator.
             
             # Kinematic stats
             mean_lat = float(obs_df["lat"].mean())
@@ -214,7 +216,7 @@ def run_full_pipeline(raw_root: Path, output_root: Path, config: Dict[str, Any] 
     ax.set_title(r"GPS Sampling Interval Distribution ($\Delta t \leq 5$s)", fontsize=13, fontweight="bold")
     ax.set_xlabel(r"Time Difference $\Delta t$ (seconds)", fontsize=11)
     ax.set_ylabel("Observation Count", fontsize=11)
-    ax.axvline(1.0, color="red", linestyle="--", linewidth=1.5, label="Nominal 1.0 Hz (97.1%)")
+    ax.axvline(1.0, color="red", linestyle="--", linewidth=1.5, label=f"1.0 s intervals ({100*np.isclose(all_dt, 1.0).mean():.2f}%)")
     ax.legend(fontsize=11)
     plt.tight_layout()
     fig.savefig(evidence_dir / "sampling_interval_dist.png", dpi=200)
@@ -295,6 +297,9 @@ def run_full_pipeline(raw_root: Path, output_root: Path, config: Dict[str, Any] 
 
 
 if __name__ == "__main__":
-    raw_path = Path("F:/ML_QUIZ/Student folder/Student folder")
-    out_path = Path("F:/ML_QUIZ/New folder")
-    run_full_pipeline(raw_path, out_path)
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--raw-root', type=Path, default=repo_root / 'Student folder')
+    parser.add_argument('--output-root', type=Path, default=repo_root)
+    args = parser.parse_args()
+    run_full_pipeline(args.raw_root, args.output_root)

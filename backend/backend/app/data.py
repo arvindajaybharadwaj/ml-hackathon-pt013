@@ -108,8 +108,18 @@ class TripRepository:
 class ReferenceRouteRepository:
     """Separate label store. Only the evaluation service should use this class."""
 
-    def __init__(self, trip_repository: TripRepository):
+    def __init__(self, trip_repository: TripRepository, alignment_dir: Path | None = None):
         self.trip_repository = trip_repository
+        self.alignment_dir = alignment_dir
+
+    def load_aligned_labels(self, trip_id: str) -> pd.DataFrame:
+        """Evaluation-only access; prepared labels or the same route alignment used in training."""
+        if self.alignment_dir:
+            path = self.alignment_dir / 'labels.parquet'
+            if path.is_file():
+                return pd.read_parquet(path, filters=[('trip_id', '=', trip_id)])
+        from data_pipeline.loaders import load_labels
+        return load_labels(self.trip_repository.data_root, self.trip_repository.partition, trip_id).labels
 
     def load_reference_route(self, trip_id: str) -> list[int]:
         trip_dir = self.trip_repository._trip_dir(trip_id)

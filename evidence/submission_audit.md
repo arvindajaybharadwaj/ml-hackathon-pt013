@@ -1,3 +1,5 @@
+> Historical audit before completion. See submission_completion.md for the current resolved items and report deferral.
+
 # PathSnap submission audit — 18 November 2026
 
 ## Verdict

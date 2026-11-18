@@ -88,3 +88,15 @@ For a fresh full training run (unnecessary for current integration):
 - Map shows actual selected road segments. The decoder's selected observation arcs are not expanded into every intermediate shortest-path road edge.
 - Existing legacy backend docs/results describe earlier fallback-only smoke work; root README and evidence/integration are authoritative for current integration.
 - Servers were started for verification on ports 8000 and 5173. Check for existing processes before starting duplicates.
+
+## Latest completion update
+
+- Initial integration was committed and pushed as 056b0d4.
+- Added tracked model comparisons, graphs, confusion matrices, original CV/search records, and an actual neural grouped-fold training/validation history. Dashboard serves the comparison through new API endpoints.
+- Added pointwise HMM metrics and corrected missing-observation continuity. Route geometry now expands valid directed paths and preserves explicit breaks. A bounded-distance cache bug when increasing cutoff was corrected.
+- Tuned the real HMM across 12 configurations on all ten student-test trips. Chosen base=15, fraction=0.25, missing=6, unreachable=8; saved in artifacts/model/hmm_config.json. Classifier Top-1 82.3859%, HMM 85.5508%, development-partition results.
+- Separate Node UI process on port 5174 was verified against API LAN address 10.8.120.108:8000 on this workstation. All ten prediction/evaluation/map flows passed. This is not a claim of a two-physical-laptop rehearsal.
+- Added frontend/start-demo.mjs with API checks and backend origin configuration, docs/TWO_LAPTOP_DEMO.md, and scripts/prepare_partition.py (no reference access). Tuning scripts reject evaluator partitions.
+- Corrected EDA statistics/notes and portable raw-export CLI. Current schema corrections are descriptive; feature names/order/version and numeric transformations are unchanged. Original training schema is archived in evidence/models/records.
+- Latest verification: 34 Python tests pass; frontend lint and production build pass.
+- USER HAS DEFERRED REPORT WORK. A local draft reports/PathSnap_Technical_Report.docx and report-only helper/figure files exist but should not be treated as a completed or delivered report. Stop report editing/QA until requested again. Do not include report files in this push.

@@ -35,7 +35,9 @@ class PreparedCandidateProvider:
     def available_trip_ids(self) -> set[str]:
         combined = self.candidate_dir / 'candidates.parquet'
         if combined.is_file():
-            return set(pd.read_parquet(combined, columns=['trip_id']).trip_id.astype(str))
+            observations = self.candidate_dir / 'observations.parquet'
+            source = observations if observations.is_file() else combined
+            return set(pd.read_parquet(source, columns=['trip_id']).trip_id.astype(str))
         return {p.stem for ext in ('*.csv', '*.parquet') for p in self.candidate_dir.glob(ext)}
 
     def generate(self, trip: TripData, network: RoadNetwork) -> pd.DataFrame:

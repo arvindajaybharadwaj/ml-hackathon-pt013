@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+import json
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 
 from .candidates import NearestArcCandidateProvider, PreparedCandidateProvider
 from .config import Settings
@@ -71,7 +73,7 @@ def build_services(settings: Settings):
         unreachable_penalty=settings.unreachable_penalty,
     ))
     prediction = PredictionService(trips, candidate_provider, predictor, decoder)
-    references = ReferenceRouteRepository(trips)
+    references = ReferenceRouteRepository(trips, settings.candidate_dir)
     evaluation = EvaluationService(prediction, references)
     return trips, candidate_provider, predictor, prediction, evaluation
 
@@ -148,6 +150,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def list_trips(request: Request):
         s = state(request)
         return {"partition": settings.partition, "trip_ids": s.trips.list_trip_ids()}
+
+    comparison_root = Path(__file__).resolve().parents[3] / 'evidence/models'
+
+    @application.get('/api/model-comparison', tags=['experiments'])
+    def model_comparison():
+        source = comparison_root / 'comparison.json'
+        if not source.is_file():
+            raise HTTPException(status_code=404, detail='Run scripts/build_model_evidence.py to publish comparison evidence')
+        return json.loads(source.read_text())
+
+    @application.get('/api/model-comparison/plots/{filename}', tags=['experiments'])
+    def comparison_plot(filename: str):
+        if Path(filename).name != filename or not filename.endswith('.png'):
+            raise HTTPException(status_code=400, detail='Invalid plot name')
+        path = comparison_root / 'plots' / filename
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail='Plot not found')
+        return FileResponse(path, media_type='image/png')
 
     @application.get("/api/trips/{trip_id}", response_model=TripSummary, tags=["trips"])
     def trip_metadata(trip_id: str, request: Request):

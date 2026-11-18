@@ -1,0 +1,6 @@
+{
+  "transition_sigma_base_m": 15.0,
+  "transition_sigma_fraction": 0.25,
+  "missing_state_penalty": 6.0,
+  "unreachable_penalty": 8.0
+}

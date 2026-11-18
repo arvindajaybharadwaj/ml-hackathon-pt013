@@ -1,0 +1,31 @@
+{
+  "partition": "student_test",
+  "grid_size": 12,
+  "trip_count": 10,
+  "predictor_mode": "trained_model",
+  "predictor": "hist_gradient_boosting",
+  "best_config": {
+    "transition_sigma_base_m": 15.0,
+    "transition_sigma_fraction": 0.25,
+    "missing_state_penalty": 6.0,
+    "unreachable_penalty": 8.0
+  },
+  "selection_objective": "Pooled aligned observation Top-1; ties use observation-arc sequence similarity and set F1",
+  "best_aligned_top1_accuracy": 0.855507547275686,
+  "trip_ids": [
+    "00000000",
+    "00000007",
+    "00000009",
+    "00000040",
+    "00000052",
+    "00000056",
+    "00000065",
+    "00000076",
+    "00000077",
+    "00000091"
+  ],
+  "grid_rationale": "Vary transition tolerance and unreachable penalty; missing penalty held fixed because these student-test trips have no candidate-free observations.",
+  "best_mean_sequence_similarity": 0.6441875235493365,
+  "best_mean_arc_set_f1": 0.8763731908677708,
+  "warning": "Exploratory tuning on this partition is not an independent final evaluation. Do not tune against evaluator-test labels."
+}

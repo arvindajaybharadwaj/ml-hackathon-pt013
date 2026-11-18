@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +42,10 @@ class Settings:
         partition = os.getenv("PATHSNAP_PARTITION", "student_test").strip()
         candidate_dir_raw = os.getenv("PATHSNAP_CANDIDATE_DIR", str(ROOT / 'prepared_data' / partition)).strip()
         model_path_raw = os.getenv("PATHSNAP_MODEL_PATH", str(ROOT / 'artifacts/model')).strip()
+        config_path = Path(os.getenv('PATHSNAP_HMM_CONFIG', str(ROOT / 'artifacts/model/hmm_config.json')))
+        hmm = json.loads(config_path.read_text()) if config_path.is_file() else {}
+        if os.getenv('PATHSNAP_HMM_CONFIG') and not config_path.is_file():
+            raise FileNotFoundError(f'HMM configuration not found: {config_path}')
         features_raw = os.getenv("PATHSNAP_MODEL_FEATURES", "").strip()
         origins_raw = os.getenv(
             "PATHSNAP_CORS_ORIGINS",
@@ -58,10 +63,10 @@ class Settings:
             candidate_radius_m=float(os.getenv("PATHSNAP_CANDIDATE_RADIUS_M", "100")),
             max_candidates=int(os.getenv("PATHSNAP_MAX_CANDIDATES", "8")),
             emission_sigma_m=float(os.getenv("PATHSNAP_EMISSION_SIGMA_M", "25")),
-            transition_sigma_base_m=float(os.getenv("PATHSNAP_TRANSITION_SIGMA_BASE_M", "30")),
-            transition_sigma_fraction=float(os.getenv("PATHSNAP_TRANSITION_SIGMA_FRACTION", "0.5")),
-            missing_state_penalty=float(os.getenv("PATHSNAP_MISSING_STATE_PENALTY", "6")),
-            unreachable_penalty=float(os.getenv("PATHSNAP_UNREACHABLE_PENALTY", "12")),
+            transition_sigma_base_m=float(os.getenv("PATHSNAP_TRANSITION_SIGMA_BASE_M", hmm.get('transition_sigma_base_m', 30))),
+            transition_sigma_fraction=float(os.getenv("PATHSNAP_TRANSITION_SIGMA_FRACTION", hmm.get('transition_sigma_fraction', .5))),
+            missing_state_penalty=float(os.getenv("PATHSNAP_MISSING_STATE_PENALTY", hmm.get('missing_state_penalty', 6))),
+            unreachable_penalty=float(os.getenv("PATHSNAP_UNREACHABLE_PENALTY", hmm.get('unreachable_penalty', 12))),
             cors_origins=tuple(x.strip() for x in origins_raw.split(",") if x.strip()),
             environment=os.getenv("PATHSNAP_ENV", "production").strip().lower(),
         )

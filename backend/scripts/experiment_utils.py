@@ -14,8 +14,12 @@ from backend.app.main import build_services
 
 
 def settings_from_args(data_root: str | None, partition: str):
+    if partition not in {'train', 'student_test'}:
+        raise ValueError('Development experiments may only use train/student_test, never evaluator labels')
     settings = Settings.from_env()
     updates = {"partition": partition}
+    if not os.getenv('PATHSNAP_CANDIDATE_DIR'):
+        updates['candidate_dir'] = ROOT.parent / 'prepared_data' / partition
     if data_root:
         updates["data_root"] = Path(data_root).expanduser().resolve()
     # Experiments may run the explicitly labelled fallback if Person 2's model

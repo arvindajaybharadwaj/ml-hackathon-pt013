@@ -13,3 +13,5 @@ export async function request(path, options = {}) {
 export function mapUrl(tripId) {
   return `${base}/api/maps/${encodeURIComponent(tripId)}`;
 }
+
+export function apiUrl(path) { return `${base}${path}`; }

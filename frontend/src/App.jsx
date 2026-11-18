@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { mapUrl, request } from './api';
 import './App.css';
+import ModelComparison from './ModelComparison';
 
 const partitionName = (partition) => partition === 'student_test' ? 'Student Test' :
   partition === 'train' ? 'Training' : 'Evaluator';
@@ -87,6 +88,7 @@ function App() {
         <a className="nav-link active" href="#dashboard">▦ &nbsp; Dashboard</a>
         <a className="nav-link" href="#route-map">⌖ &nbsp; Route Explorer</a>
         <a className="nav-link" href="#results">⌁ &nbsp; Predictions</a>
+        <a className="nav-link" href="#model-comparison">▤ &nbsp; Model Comparison</a>
         <a className="nav-link" href="#performance">▤ &nbsp; Performance</a>
         <div className="sidebar-bottom">
           <span className={connected ? 'online-dot' : 'pending-dot'} />
@@ -175,6 +177,7 @@ function App() {
             {prediction ? <>
               <table><thead><tr><th>Metric</th><th>Classifier only</th><th>With HMM</th></tr></thead>
                 <tbody>
+                  <tr><td>Aligned GPS Top-1 accuracy</td><td>{percent(evaluation?.classifier_top1_accuracy)}</td><td>{percent(evaluation?.hmm_top1_accuracy)}</td></tr>
                   <tr><td>Direct road continuity</td><td>{percent(prediction.classifier_only_route_continuity)}</td><td>{percent(prediction.route_continuity)}</td></tr>
                   <tr><td>Route sequence similarity</td><td>{percent(evaluation?.classifier_only_sequence_edit_similarity)}</td><td>{percent(evaluation?.sequence_edit_similarity)}</td></tr>
                   <tr><td>Route arc set F1</td><td>{percent(evaluation?.classifier_only_arc_set_f1)}</td><td>{percent(evaluation?.arc_set_f1)}</td></tr>
@@ -182,6 +185,7 @@ function App() {
               <p className="metric-note">Route metrics compare road sequences and road sets; they are different from GPS point accuracy.</p>
             </> : <p className="metric-note">Run a prediction to compare results.</p>}
           </section>
+          <ModelComparison />
           <footer>PathSnap · Distributed Map-Matching & Route Reconstruction · PT-013</footer>
         </div>
       </main>

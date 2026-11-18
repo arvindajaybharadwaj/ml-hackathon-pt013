@@ -4,7 +4,7 @@ import numpy as np
 from .data import TripData
 
 
-def render_route_map(trip: TripData, prediction: dict) -> str:
+def render_route_map(trip: TripData, prediction: dict, reference=None) -> str:
     track = trip.track[['latitude', 'longitude']].to_numpy()
     view = folium.Map(location=track.mean(axis=0).tolist(), tiles='OpenStreetMap', prefer_canvas=True)
     # GeoJSON renders many segments as one layer and never joins disconnected roads.
@@ -22,10 +22,12 @@ def render_route_map(trip: TripData, prediction: dict) -> str:
         group.add_to(view)
     layer('Road network', edges[visible].tolist(), '#9aa5b5', 2)
     layer('GPS observations', [trip.track[['longitude', 'latitude']].values.tolist()], '#e99b49', 2)
-    classifier = list(dict.fromkeys(x for x in prediction['classifier_only_arc_ids'] if x is not None))
-    matched = list(dict.fromkeys(x for x in prediction['predicted_arc_ids'] if x is not None))
+    classifier = list(dict.fromkeys(x for x in prediction.get('classifier_route_arc_ids', prediction['classifier_only_arc_ids']) if x is not None))
+    matched = list(dict.fromkeys(x for x in prediction.get('predicted_route_arc_ids', prediction['predicted_arc_ids']) if x is not None))
     layer('Classifier only', edges[classifier].tolist(), '#b36ddd', 3, False)
     layer('HMM matched roads', edges[matched].tolist(), '#4768e9', 5)
+    if reference is not None:
+        layer('Reference route for development report', edges[reference].tolist(), '#13954a', 3)
     for index, label, color in [(0, 'Start', 'green'), (-1, 'End', 'red')]:
         folium.Marker(track[index].tolist(), tooltip=label, icon=folium.Icon(color=color)).add_to(view)
     view.fit_bounds([track.min(axis=0).tolist(), track.max(axis=0).tolist()])

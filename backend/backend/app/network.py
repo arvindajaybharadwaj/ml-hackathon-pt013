@@ -66,6 +66,8 @@ class RoadNetwork:
         # Cache exact source/target shortest-path results. A* with a straight-line
         # admissible heuristic avoids exploring a large radius around every source.
         self._distance_cache: OrderedDict[tuple[int, int], float | None] = OrderedDict()
+        self._failure_cutoffs = {}
+        self._path_cache = OrderedDict()
 
     def edge_coordinates(self, arc_id: int) -> list[list[float]]:
         u, v = self.arcs[int(arc_id)]
@@ -116,7 +118,10 @@ class RoadNetwork:
         if key in self._distance_cache:
             value = self._distance_cache[key]
             self._distance_cache.move_to_end(key)
-            return value if value is not None and value <= cutoff_m else None
+            if value is not None:
+                return value if value <= cutoff_m else None
+            if cutoff_m <= self._failure_cutoffs.get(key, -1):
+                return None
         # Bounded A*: straight-line distance is admissible because each edge
         # weight is its projected Euclidean length. The expansion cap prevents
         # disconnected candidates from causing an unbounded graph search.
@@ -144,6 +149,47 @@ class RoadNetwork:
                     heapq.heappush(queue, (candidate_distance + heuristic, candidate_distance,
                                            next(counter), int(neighbour)))
         self._distance_cache[key] = value
+        if value is None:
+            self._failure_cutoffs[key] = cutoff_m
+        else:
+            self._failure_cutoffs.pop(key, None)
         if len(self._distance_cache) > self._cache_size:
-            self._distance_cache.popitem(last=False)
+            expired, _ = self._distance_cache.popitem(last=False)
+            self._failure_cutoffs.pop(expired, None)
         return value if value is not None and value <= cutoff_m else None
+
+    def shortest_path_arcs(self, source: int, target: int, cutoff_m: float):
+        """Bounded A* returning actual edge IDs for route geometry, not just distance."""
+        if source == target:
+            return []
+        key = (source, target, float(cutoff_m))
+        if key in self._path_cache:
+            return self._path_cache[key]
+        queue = [(float(np.linalg.norm(self.node_xy[source]-self.node_xy[target])), 0., source)]
+        best, parents, expanded = {source: 0.}, {}, 0
+        result = None
+        while queue and expanded < self.max_search_nodes:
+            _, cost, node = heapq.heappop(queue)
+            if cost != best.get(node):
+                continue
+            if node == target:
+                result = []
+                while node != source:
+                    node, arc = parents[node]
+                    result.append(arc)
+                result.reverse()
+                break
+            expanded += 1
+            for neighbour, edges in self.graph[node].items():
+                for attrs in edges.values():
+                    candidate = cost + float(attrs['weight'])
+                    if candidate > cutoff_m or candidate >= best.get(neighbour, float('inf')):
+                        continue
+                    best[neighbour] = candidate
+                    parents[neighbour] = (node, int(attrs['arc_id']))
+                    heuristic = float(np.linalg.norm(self.node_xy[neighbour]-self.node_xy[target]))
+                    heapq.heappush(queue, (candidate+heuristic, candidate, int(neighbour)))
+        self._path_cache[key] = result
+        if len(self._path_cache) > 4096:
+            self._path_cache.popitem(last=False)
+        return result

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from time import perf_counter
 from functools import lru_cache
+import numpy as np
+from sklearn.metrics import f1_score
 
 from .candidates import CandidateProvider
 from .data import ReferenceRouteRepository, TripRepository
@@ -49,17 +51,26 @@ class PredictionService:
         route_continuity = _route_continuity(decoded.arc_ids, network, trip.track, self.decoder)
         classifier_continuity = _route_continuity(classifier_only, network, trip.track, self.decoder)
 
-        route_coordinates: list[list[float]] = []
-        for arc_id in decoded.arc_ids:
+        route_ids = expand_route(decoded.arc_ids, network, trip.track, self.decoder)
+        classifier_route_ids = expand_route(classifier_only, network, trip.track, self.decoder)
+        route_segments = []
+        segment = []
+        for arc_id in route_ids:
             if arc_id is None:
+                if segment:
+                    route_segments.append(segment)
+                    segment = []
                 continue
             edge = network.edge_coordinates(arc_id)
-            if not route_coordinates:
-                route_coordinates.extend(edge)
-            elif route_coordinates[-1] == edge[0]:
-                route_coordinates.append(edge[1])
+            if not segment:
+                segment.extend(edge)
+            elif segment[-1] == edge[0]:
+                segment.append(edge[1])
             else:
-                route_coordinates.extend(edge)
+                route_segments.append(segment)
+                segment = list(edge)
+        if segment:
+            route_segments.append(segment)
 
         matches = []
         for obs_index, arc_id in enumerate(decoded.arc_ids):
@@ -87,7 +98,11 @@ class PredictionService:
             "classifier_only_arc_ids": classifier_only,
             "route_continuity": round(route_continuity, 6),
             "classifier_only_route_continuity": round(classifier_continuity, 6),
-            "route_coordinates": route_coordinates,
+            # Legacy field contains one continuous piece; route_segments is canonical.
+            "route_coordinates": max(route_segments, key=len, default=[]),
+            "route_segments": route_segments,
+            "predicted_route_arc_ids": route_ids,
+            "classifier_route_arc_ids": classifier_route_ids,
             "matches": matches,
             "viterbi_log_probability": decoded.log_probability,
             "decoder_diagnostics": decoded.diagnostics,
@@ -113,10 +128,10 @@ class EvaluationService:
         prediction = self.prediction_service.predict(trip_id)
         # Ground truth is deliberately loaded only after prediction has completed.
         reference = self.references.load_reference_route(trip_id)
-        predicted = _compress_consecutive([x for x in prediction["predicted_arc_ids"] if x is not None])
+        predicted = _compress_consecutive([x for x in prediction["predicted_route_arc_ids"] if x is not None])
         reference_compact = _compress_consecutive(reference)
         classifier_only = _compress_consecutive([
-            x for x in prediction["classifier_only_arc_ids"] if x is not None
+            x for x in prediction["classifier_route_arc_ids"] if x is not None
         ])
         edit_distance = _levenshtein(predicted, reference_compact)
         classifier_edit_distance = _levenshtein(classifier_only, reference_compact)
@@ -132,7 +147,20 @@ class EvaluationService:
         precision = intersection / len(pred_set) if pred_set else 0.0
         recall = intersection / len(ref_set) if ref_set else 0.0
         f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        aligned = self.references.load_aligned_labels(trip_id)
+        if aligned.duplicated('obs_id').any() or set(aligned.obs_id) != set(range(prediction['gps_observations'])):
+            raise ValueError('Aligned evaluation labels must cover every original observation exactly once')
+        aligned = aligned.sort_values('obs_id')
+        valid = (aligned.alignment_valid & aligned.reference_arc_id.notna()).to_numpy(dtype=bool)
+        truth = aligned.loc[valid, 'reference_arc_id'].to_numpy(dtype=int)
+        pointwise = {'alignment_coverage': float(valid.mean()), 'evaluated_observations': int(valid.sum())}
+        for name, field in [('classifier', 'classifier_only_arc_ids'), ('hmm', 'predicted_arc_ids')]:
+            values = np.array([-1 if x is None else x for x in prediction[field]])[valid]
+            pointwise[name + '_correct_observations'] = int((values == truth).sum())
+            pointwise[name + '_top1_accuracy'] = float((values == truth).mean()) if len(truth) else None
+            pointwise[name + '_observation_arc_macro_f1'] = float(f1_score(truth, values, average='macro', zero_division=0)) if len(truth) else None
         return {
+            **pointwise,
             "trip_id": trip_id,
             "prediction_mode": prediction["prediction_mode"],
             "predicted_sequence_length": len(predicted),
@@ -149,8 +177,8 @@ class EvaluationService:
             "timing_breakdown_ms": prediction["timing_breakdown_ms"],
             "decoder_diagnostics": prediction["decoder_diagnostics"],
             "note": (
-                "The .route file is a trip-level arc sequence, not an observation-aligned label array. "
-                "Therefore these are sequence/set metrics, not GPS pointwise accuracy."
+                "Sequence/set metrics compare expanded road paths with the reference route. "
+                "Pointwise metrics use separately aligned observation labels; inspect alignment coverage."
             ),
         }
 
@@ -193,11 +221,38 @@ def _route_continuity(arc_ids: list[int | None], network, observations, decoder)
     adjacency (not arbitrary multi-hop reachability), so it is fast, deterministic
     and has a precise interpretation for the report.
     """
-    pairs = [(a, b) for a, b in zip(arc_ids, arc_ids[1:]) if a is not None and b is not None]
+    pairs = list(zip(arc_ids, arc_ids[1:]))
     if not pairs:
-        return 1.0
+        return 0.0
     connected = 0
     for previous, current in pairs:
+        if previous is None or current is None:
+            continue
         if previous == current or int(network.arcs[int(previous), 1]) == int(network.arcs[int(current), 0]):
             connected += 1
     return connected / len(pairs)
+
+
+def expand_route(arc_ids, network, observations, decoder):
+    """Insert bounded directed shortest paths; preserve explicit breaks when unreachable."""
+    result = []
+    previous = None
+    for index, current in enumerate(arc_ids):
+        if current is None:
+            if result and result[-1] is not None:
+                result.append(None)
+            previous = None
+            continue
+        if previous is not None and current != previous:
+            distance, dt = _observation_step(observations, index)
+            cutoff = max(250., distance * 4 + 150, dt * decoder.config.max_speed_mps * 1.5)
+            bridge = network.shortest_path_arcs(int(network.arcs[previous, 1]),
+                                                int(network.arcs[current, 0]), cutoff)
+            if bridge is None:
+                result.append(None)
+            else:
+                result.extend(bridge)
+        if previous != current:
+            result.append(int(current))
+        previous = current
+    return result

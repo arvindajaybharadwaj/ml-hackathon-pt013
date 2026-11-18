@@ -1,0 +1,291 @@
+{
+  "run_id": "modal-final-20261118",
+  "selected_model": "hist_gradient_boosting",
+  "selected_tuned": true,
+  "data_partition": "student_test",
+  "training_trips": 80,
+  "student_test_trips": 10,
+  "selection_metric": "trip-grouped CV binary candidate Macro F1",
+  "models": [
+    {
+      "model": "logistic_regression",
+      "cv_candidate_macro_f1": 0.863438825756841,
+      "cv_candidate_macro_f1_std": 0.0088920464149407,
+      "train_candidate_macro_f1": 0.8640960332218433,
+      "fit_seconds": 5.179166574,
+      "wall_seconds": 27.419017549000003,
+      "training_device": "cpu",
+      "student_test_candidate_macro_f1": 0.878181991171617,
+      "student_test_candidate_precision": 0.7955345295101829,
+      "student_test_candidate_recall": 0.7740106651698008,
+      "student_test_candidate_log_loss": 0.1337513532089657,
+      "student_test_top1_accuracy": 0.8110655967678582,
+      "student_test_observation_arc_macro_f1": 0.6155672663577014,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.1332503689999953,
+      "label": "Logistic regression",
+      "candidate_confusion_matrix": [
+        [
+          130145,
+          3544
+        ],
+        [
+          4026,
+          13789
+        ]
+      ],
+      "classifier_direct_continuity": 0.8914360313315927
+    },
+    {
+      "model": "gaussian_nb",
+      "cv_candidate_macro_f1": 0.7816132130363768,
+      "cv_candidate_macro_f1_std": 0.007365629046834,
+      "train_candidate_macro_f1": 0.7773781867600102,
+      "fit_seconds": 2.959002574000003,
+      "wall_seconds": 21.846315288999996,
+      "training_device": "cpu",
+      "student_test_candidate_macro_f1": 0.7765296315877742,
+      "student_test_candidate_precision": 0.481045401837481,
+      "student_test_candidate_recall": 0.9081672747684536,
+      "student_test_candidate_log_loss": 0.605440815135819,
+      "student_test_top1_accuracy": 0.7911452780427586,
+      "student_test_observation_arc_macro_f1": 0.5858240269332391,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.1192093809999974,
+      "label": "Gaussian Naive Bayes",
+      "candidate_confusion_matrix": [
+        [
+          116235,
+          17454
+        ],
+        [
+          1636,
+          16179
+        ]
+      ],
+      "classifier_direct_continuity": 0.8912271540469974
+    },
+    {
+      "model": "decision_tree",
+      "cv_candidate_macro_f1": 0.8790331826415824,
+      "cv_candidate_macro_f1_std": 0.0083109733552887,
+      "train_candidate_macro_f1": 0.8825620195084333,
+      "fit_seconds": 16.161887089999993,
+      "wall_seconds": 59.96867957400001,
+      "training_device": "cpu",
+      "student_test_candidate_macro_f1": 0.895434905455416,
+      "student_test_candidate_precision": 0.8139573896997148,
+      "student_test_candidate_recall": 0.8170642716811676,
+      "student_test_candidate_log_loss": 0.1037358442984618,
+      "student_test_top1_accuracy": 0.8245328544975029,
+      "student_test_observation_arc_macro_f1": 0.655284546090554,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.0942401709999956,
+      "label": "Decision tree",
+      "candidate_confusion_matrix": [
+        [
+          130362,
+          3327
+        ],
+        [
+          3259,
+          14556
+        ]
+      ],
+      "classifier_direct_continuity": 0.9013054830287206
+    },
+    {
+      "model": "random_forest",
+      "cv_candidate_macro_f1": 0.8792853379135949,
+      "cv_candidate_macro_f1_std": 0.0082120384119884,
+      "train_candidate_macro_f1": 0.8891055996962179,
+      "fit_seconds": 48.40010612300003,
+      "wall_seconds": 153.311283759,
+      "training_device": "cpu",
+      "student_test_candidate_macro_f1": 0.8939025010656075,
+      "student_test_candidate_precision": 0.8263267913134363,
+      "student_test_candidate_recall": 0.7988212180746562,
+      "student_test_candidate_log_loss": 0.1027961069404854,
+      "student_test_top1_accuracy": 0.8222321979686886,
+      "student_test_observation_arc_macro_f1": 0.655782235865124,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.2460784609999677,
+      "label": "Random forest",
+      "candidate_confusion_matrix": [
+        [
+          130698,
+          2991
+        ],
+        [
+          3584,
+          14231
+        ]
+      ],
+      "classifier_direct_continuity": 0.9009921671018277
+    },
+    {
+      "model": "hist_gradient_boosting",
+      "cv_candidate_macro_f1": 0.880544013576845,
+      "cv_candidate_macro_f1_std": 0.0076572447013049,
+      "train_candidate_macro_f1": 0.8879773365044903,
+      "fit_seconds": 5.151963160000037,
+      "wall_seconds": 38.01389613199996,
+      "training_device": "cpu",
+      "student_test_candidate_macro_f1": 0.8946763083874862,
+      "student_test_candidate_precision": 0.8161710771314111,
+      "student_test_candidate_recall": 0.8119562166713443,
+      "student_test_candidate_log_loss": 0.1019486276215943,
+      "student_test_top1_accuracy": 0.823466696593906,
+      "student_test_observation_arc_macro_f1": 0.658572976712205,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.6599498979999794,
+      "label": "Histogram gradient boosting",
+      "candidate_confusion_matrix": [
+        [
+          130431,
+          3258
+        ],
+        [
+          3350,
+          14465
+        ]
+      ],
+      "classifier_direct_continuity": 0.9022976501305483
+    },
+    {
+      "model": "torch_mlp",
+      "cv_candidate_macro_f1": 0.8722533349043476,
+      "cv_candidate_macro_f1_std": 0.0107942793289769,
+      "train_candidate_macro_f1": 0.8769831699190564,
+      "fit_seconds": 7.294683905999989,
+      "wall_seconds": 38.26313004399998,
+      "training_device": "cuda",
+      "student_test_candidate_macro_f1": 0.8916967471320758,
+      "student_test_candidate_precision": 0.8302355865987925,
+      "student_test_candidate_recall": 0.7873140611843952,
+      "student_test_candidate_log_loss": 0.1082752368197904,
+      "student_test_top1_accuracy": 0.8159474776948544,
+      "student_test_observation_arc_macro_f1": 0.6410656806471122,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.098026104999974,
+      "label": "Neural network",
+      "candidate_confusion_matrix": [
+        [
+          130821,
+          2868
+        ],
+        [
+          3789,
+          14026
+        ]
+      ],
+      "classifier_direct_continuity": 0.8988511749347259
+    },
+    {
+      "model": "hist_gradient_boosting__tuned",
+      "cv_candidate_macro_f1": 0.8807681003448012,
+      "cv_candidate_macro_f1_std": 0.0075184251059566,
+      "train_candidate_macro_f1": 0.8919614123092113,
+      "fit_seconds": 5.587426008999955,
+      "wall_seconds": null,
+      "training_device": null,
+      "student_test_candidate_macro_f1": 0.8944046832888195,
+      "student_test_candidate_precision": 0.816250423776698,
+      "student_test_candidate_recall": 0.8108896996912714,
+      "student_test_candidate_log_loss": 0.1016339584911803,
+      "student_test_top1_accuracy": 0.8238594916110207,
+      "student_test_observation_arc_macro_f1": 0.6625059941283457,
+      "student_test_candidate_miss_rate": 0.0003366814432411,
+      "student_test_alignment_coverage": 0.9301148225469728,
+      "student_test_prediction_coverage": 1.0,
+      "student_test_evaluated_observations": 17821,
+      "student_test_raw_observations": 19160,
+      "student_test_zero_candidate_observations": 0,
+      "student_test_inference_seconds": 0.6906047230000922,
+      "label": "Histogram boosting tuned",
+      "candidate_confusion_matrix": [
+        [
+          130437,
+          3252
+        ],
+        [
+          3369,
+          14446
+        ]
+      ],
+      "classifier_direct_continuity": 0.9030809399477807
+    }
+  ],
+  "plots": [
+    {
+      "name": "cv_macro_f1.png",
+      "title": "Cross validation candidate Macro F1"
+    },
+    {
+      "name": "test_top1.png",
+      "title": "Student test observation Top 1 accuracy"
+    },
+    {
+      "name": "test_macro_f1.png",
+      "title": "Student test candidate Macro F1"
+    },
+    {
+      "name": "log_loss.png",
+      "title": "Student test candidate log loss"
+    },
+    {
+      "name": "inference_time.png",
+      "title": "Candidate scoring time on student test in seconds"
+    },
+    {
+      "name": "training_time.png",
+      "title": "Full training fit time in seconds"
+    },
+    {
+      "name": "generalisation.png",
+      "title": "Training and validation comparison"
+    },
+    {
+      "name": "neural_training_loss.png",
+      "title": "Neural network training history"
+    },
+    {
+      "name": "bayesian_search.png",
+      "title": "Bayesian optimisation history"
+    },
+    {
+      "name": "neural_validation_loss.png",
+      "title": "Neural network grouped training and validation loss"
+    }
+  ]
+}

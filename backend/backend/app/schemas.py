@@ -40,6 +40,9 @@ class PredictionResponse(BaseModel):
     route_continuity: float
     classifier_only_route_continuity: float
     route_coordinates: list[list[float]]
+    route_segments: list[list[list[float]]] = Field(default_factory=list)
+    predicted_route_arc_ids: list[int | None] = Field(default_factory=list)
+    classifier_route_arc_ids: list[int | None] = Field(default_factory=list)
     matches: list[dict]
     viterbi_log_probability: float
     decoder_diagnostics: dict
@@ -65,6 +68,14 @@ class EvaluationResponse(BaseModel):
     timing_breakdown_ms: dict[str, float]
     decoder_diagnostics: dict
     note: str
+    alignment_coverage: float | None = None
+    evaluated_observations: int = 0
+    classifier_correct_observations: int = 0
+    hmm_correct_observations: int = 0
+    classifier_top1_accuracy: float | None = None
+    hmm_top1_accuracy: float | None = None
+    classifier_observation_arc_macro_f1: float | None = None
+    hmm_observation_arc_macro_f1: float | None = None
 
 
 class ErrorResponse(BaseModel):

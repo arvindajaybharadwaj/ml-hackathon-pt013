@@ -6,6 +6,9 @@
 PT-013_Team_Execution_Guide.pdf
 
 /runs/
+/Evaluator data/
+/evaluator_data/
+/prepared_data/evaluator*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
